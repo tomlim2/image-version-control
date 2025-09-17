@@ -1,0 +1,37 @@
+{
+  "name": "pixtree",
+  "version": "1.0.0",
+  "description": "Pixtree CLI - AI image version control system",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "pixtree": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@pixtree/core": "workspace:*",
+    "commander": "^12.1.0",
+    "chalk": "^5.3.0",
+    "ora": "^8.1.0",
+    "inquirer": "^10.2.2",
+    "fs-extra": "^11.2.0"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.7",
+    "@types/fs-extra": "^11.0.4"
+  },
+  "files": ["dist/**/*"],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": ["ai", "image", "version-control", "cli", "pixtree"],
+  "author": "younsoolim",
+  "license": "MIT"
+}
