@@ -434,7 +434,7 @@ export class StorageManager {
       // Tag filter
       if (query.tags && query.tags.length > 0) {
         const hasAllTags = query.tags.every(tag => 
-          node.userMetadata.tags.includes(tag)
+          node.tags.includes(tag)
         );
         if (!hasAllTags) return false;
       }
@@ -444,9 +444,9 @@ export class StorageManager {
         const searchText = query.text.toLowerCase();
         const searchFields = [
           node.generationParams?.prompt || '',
-          node.userMetadata.notes || '',
+          node.userMetadata.description || '',
           node.importInfo?.userDescription || '',
-          ...node.userMetadata.tags
+          ...node.tags
         ].join(' ').toLowerCase();
         
         if (!searchFields.includes(searchText)) return false;
@@ -495,9 +495,9 @@ export class StorageManager {
         const searchText = options.text.toLowerCase();
         const searchFields = [
           node.generationParams?.prompt || '',
-          node.userMetadata.notes || '',
+          node.userMetadata.description || '',
           node.importInfo?.userDescription || '',
-          ...node.userMetadata.tags
+          ...node.tags
         ].join(' ').toLowerCase();
         
         if (!searchFields.includes(searchText)) return false;
@@ -506,7 +506,7 @@ export class StorageManager {
       // Tag filters
       if (options.tags && options.tags.length > 0) {
         const hasAllTags = options.tags.every(tag => 
-          node.userMetadata.tags.includes(tag)
+          node.tags.includes(tag)
         );
         if (!hasAllTags) return false;
       }
@@ -594,7 +594,7 @@ export class StorageManager {
       imagesByTree[node.treeId] = (imagesByTree[node.treeId] || 0) + 1;
       
       // Tag stats
-      node.userMetadata.tags.forEach(tag => {
+      node.tags.forEach(tag => {
         tagUsage[tag] = (tagUsage[tag] || 0) + 1;
       });
       
@@ -687,7 +687,7 @@ export class StorageManager {
       }
       
       // Tag usage
-      node.userMetadata.tags.forEach(tag => {
+      node.tags.forEach(tag => {
         tagUsage[tag] = (tagUsage[tag] || 0) + 1;
       });
       

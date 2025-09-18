@@ -56,9 +56,9 @@ export function formatNodeInfo(node: ImageNode): string[] {
   }
   
   // User metadata
-  if (node.userMetadata.tags.length > 0) {
+  if (node.tags.length > 0) {
     const tagColors = [chalk.green, chalk.blue, chalk.magenta, chalk.cyan];
-    const coloredTags = node.userMetadata.tags.map((tag, i) => 
+    const coloredTags = node.tags.map((tag, i) => 
       tagColors[i % tagColors.length](tag)
     );
     lines.push(`🏷️  ${chalk.gray('Tags:')} ${coloredTags.join(', ')}`);
@@ -143,8 +143,8 @@ function displayTreeNode(
   const rating = node.userMetadata.rating ? ' ' + '⭐'.repeat(node.userMetadata.rating) : '';
   
   // Tags preview
-  const tagsPreview = node.userMetadata.tags.length > 0 
-    ? ` #${node.userMetadata.tags.slice(0, 2).join(' #')}${node.userMetadata.tags.length > 2 ? '...' : ''}`
+  const tagsPreview = node.tags.length > 0 
+    ? ` #${node.tags.slice(0, 2).join(' #')}${node.tags.length > 2 ? '...' : ''}`
     : '';
   
   // Compose full line
@@ -218,7 +218,7 @@ export function displaySearchResults(nodes: ImageNode[], query: any): void {
     }
     
     const rating = node.userMetadata.rating ? ' ' + '⭐'.repeat(node.userMetadata.rating) : '';
-    const tags = node.userMetadata.tags.length > 0 ? ` #${node.userMetadata.tags.join(' #')}` : '';
+    const tags = node.tags.length > 0 ? ` #${node.tags.join(' #')}` : '';
     
     console.log(`${prefix}${icon}${text} ${chalk.gray(`(${node.id})`)}${rating}${chalk.green(tags)}`);
   });

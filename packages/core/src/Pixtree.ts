@@ -178,13 +178,10 @@ export class Pixtree {
           modelConfig: response.metadata.parameters,
           derivedFrom: currentNode?.id
         },
+        tags: options.tags || [],
         userMetadata: {
-          tags: options.tags || [],
           favorite: false,
-          rating: options.rating,
-          notes: '',
-          collections: [],
-          purpose: options.purpose
+          rating: options.rating
         },
         success: true,
         createdAt: new Date(),
@@ -221,16 +218,14 @@ export class Pixtree {
         imageHash: '',
         source: 'generated',
         model: options.model,
+        tags: options.tags || [],
         generationParams: {
           prompt,
           modelConfig: options.modelConfig || {}
         },
         userMetadata: {
-          tags: options.tags || [],
           favorite: false,
-          rating: 1,
-          notes: '',
-          collections: []
+          rating: 1
         },
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -323,12 +318,10 @@ export class Pixtree {
         importMethod: options.importMethod,
         autoAssignedTree: !options.treeId // Track if tree was auto-assigned
       },
+      tags: [...new Set(smartTags)], // Remove duplicates
       userMetadata: {
-        tags: [...new Set(smartTags)], // Remove duplicates
         favorite: false,
-        notes: '',
-        collections: [],
-        purpose: options.purpose || this.inferPurposeFromPath(imagePath)
+        description: options.purpose || this.inferPurposeFromPath(imagePath)
       },
       success: true,
       createdAt: new Date(),
@@ -460,7 +453,7 @@ export class Pixtree {
       {
         model: node1.model || 'nano-banana',
         parentId: this.findCommonAncestor(nodeId1, nodeId2),
-        tags: [...(node1.userMetadata.tags || []), ...(node2.userMetadata.tags || [])]
+        tags: [...(node1.tags || []), ...(node2.tags || [])]
       }
     );
   }
@@ -471,18 +464,16 @@ export class Pixtree {
   async updateNode(nodeId: string, updates: {
     tags?: string[];
     rating?: number;
-    notes?: string;
+    description?: string;
     favorite?: boolean;
-    collections?: string[];
   }): Promise<ImageNode> {
     const node = await this.storage.loadNode(nodeId);
     
     // Update user metadata
-    if (updates.tags !== undefined) node.userMetadata.tags = updates.tags;
+    if (updates.tags !== undefined) node.tags = updates.tags;
     if (updates.rating !== undefined) node.userMetadata.rating = updates.rating;
-    if (updates.notes !== undefined) node.userMetadata.notes = updates.notes;
+    if (updates.description !== undefined) node.userMetadata.description = updates.description;
     if (updates.favorite !== undefined) node.userMetadata.favorite = updates.favorite;
-    if (updates.collections !== undefined) node.userMetadata.collections = updates.collections;
     
     await this.storage.saveNode(node);
     return node;
@@ -621,8 +612,8 @@ export class Pixtree {
     }
     
     // Tag similarity
-    const tags1 = node1.userMetadata.tags;
-    const tags2 = node2.userMetadata.tags;
+    const tags1 = node1.tags;
+    const tags2 = node2.tags;
     const commonTags = tags1.filter(tag => tags2.includes(tag));
     similarity += (commonTags.length / Math.max(tags1.length, tags2.length)) * 0.3;
     

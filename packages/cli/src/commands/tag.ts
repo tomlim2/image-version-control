@@ -25,7 +25,7 @@ export const tagCommand = new Command('tag')
         const allTags = new Set<string>();
         
         allNodes.forEach(node => {
-          node.userMetadata.tags.forEach(tag => allTags.add(tag));
+          node.tags.forEach(tag => allTags.add(tag));
         });
         
         const tagArray = Array.from(allTags).sort();
@@ -38,7 +38,7 @@ export const tagCommand = new Command('tag')
         } else {
           tagArray.forEach(tag => {
             const count = allNodes.filter(node => 
-              node.userMetadata.tags.includes(tag)
+              node.tags.includes(tag)
             ).length;
             console.log(`   ${chalk.green(tag)} ${chalk.gray(`(${count} nodes)`)}`);
           });
@@ -60,7 +60,7 @@ export const tagCommand = new Command('tag')
       
       // Add tags
       if (tags && tags.length > 0) {
-        const currentTags = [...currentNode.userMetadata.tags];
+        const currentTags = [...currentNode.tags];
         const newTags = tags.filter((tag: string) => !currentTags.includes(tag));
         
         if (newTags.length > 0) {
@@ -74,7 +74,7 @@ export const tagCommand = new Command('tag')
       // Remove tags
       if (options.remove) {
         const tagsToRemove = options.remove.split(',').map((tag: string) => tag.trim());
-        const currentTags = currentNode.userMetadata.tags;
+        const currentTags = currentNode.tags;
         const filteredTags = currentTags.filter(tag => !tagsToRemove.includes(tag));
         
         if (filteredTags.length !== currentTags.length) {

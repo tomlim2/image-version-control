@@ -10,6 +10,9 @@ export interface ImageNode {
   imagePath: string;
   imageHash: string;
   
+  // User-defined tags (moved to top level for better accessibility)
+  tags: string[];
+  
   // Source information
   source: 'generated' | 'imported';
   model?: string; // AI model used (nano-banana, seedream-4.0, etc.)
@@ -31,14 +34,11 @@ export interface ImageNode {
     autoAssignedTree?: boolean; // was tree auto-assigned during import
   };
   
-  // User-managed metadata
+  // User-managed metadata (simplified)
   userMetadata: {
-    tags: string[]; // User-defined tags
     favorite: boolean;
     rating?: number; // 1-5 star rating
-    notes?: string; // User notes
-    collections: string[]; // Collection names
-    purpose?: string; // what this image is for
+    description?: string; // User description/notes
   };
   
   // Export tracking
