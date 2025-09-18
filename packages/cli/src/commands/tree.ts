@@ -14,13 +14,31 @@ export const treeCommand = new Command('tree')
   .option('--imported', 'show only imported images')
   .option('--failed', 'show only failed generations')
   .option('--since <date>', 'show nodes created since date (YYYY-MM-DD)')
+  .option('--trees-only', 'show only tree overview without individual images')
   .action(async (options) => {
     try {
       const projectPath = getProjectPath(options);
       const ivc = new ImageVersionControl(projectPath);
       
-      // Get current node
-      const currentNode = await ivc.getCurrentNode();
+      // Get project and workspace context
+      const [project, context, trees] = await Promise.all([
+        ivc.getCurrentProject(),
+        ivc.getWorkspaceContext(),
+        ivc.getTrees()
+      ]);
+      
+      // Show project header
+      console.log(chalk.cyan('🌳 ' + project.name));
+      if (project.description) {
+        console.log(chalk.gray('   ' + project.description));
+      }
+      console.log('');
+      
+      // Show trees overview if requested
+      if (options.treesOnly) {
+        displayTreesOverview(trees, context.currentTree?.id);
+        return;
+      }
       
       // Build search query from options
       const searchQuery: any = {};
@@ -49,44 +67,19 @@ export const treeCommand = new Command('tree')
         searchQuery.dateRange = { from: date };
       }
       
-      // Get filtered nodes or all nodes
-      let nodes;
-      if (Object.keys(searchQuery).length > 0 || options.favorites || options.generated || options.imported || options.failed) {
-        // Apply additional filters
-        nodes = await ivc.search(searchQuery);
-        
-        if (options.favorites) {
-          nodes = nodes.filter(node => node.userMetadata.favorite);
-        }
-        
-        if (options.generated) {
-          nodes = nodes.filter(node => node.source === 'generated');
-        }
-        
-        if (options.imported) {
-          nodes = nodes.filter(node => node.source === 'imported');
-        }
-        
-        if (options.failed) {
-          nodes = nodes.filter(node => !node.success);
-        }
-        
-        // Convert to tree structure
-        const allRoots = await ivc.getTree();
-        const filteredRoots = filterTreeNodes(allRoots, nodes.map(n => n.id));
-        
-        // Show filter info
-        if (filteredRoots.length !== allRoots.length) {
-          console.log(chalk.blue('🔍 Filtered view') + chalk.gray(` (${nodes.length} nodes match criteria)`));
-          console.log('');
-        }
-        
-        displayTree(filteredRoots, currentNode?.id);
-        
-      } else {
-        // Show full tree
-        const roots = await ivc.getTree();
-        displayTree(roots, currentNode?.id);
+      // Show full project structure: Project → Trees → Nodes
+      await displayProjectTreeStructure(ivc, trees, searchQuery, options, context.currentNode?.id);
+      
+      // Show current context
+      if (context.currentTree) {
+        console.log('');
+        console.log(chalk.gray('💡 Current tree:'), chalk.cyan(context.currentTree.name));
+        console.log(chalk.gray('   Use'), chalk.cyan('pixtree tree switch <tree-name>'), chalk.gray('to change trees'));
+      }
+      
+      if (context.currentNode) {
+        console.log(chalk.gray('💡 Current node:'), chalk.cyan(context.currentNode.id));
+        console.log(chalk.gray('   Use'), chalk.cyan('pixtree checkout <node-id>'), chalk.gray('to switch nodes'));
       }
       
       // Show additional info
