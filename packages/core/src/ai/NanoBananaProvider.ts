@@ -7,7 +7,7 @@ import {
   AnalysisResponse,
   BlendRequest,
   BlendResponse
-} from '../types/AIProvider.js';
+} from '../types/ai/AIProvider.js';
 
 export interface NanoBananaConfig extends AIProviderConfig {
   apiKey: string;
@@ -31,7 +31,7 @@ export class NanoBananaProvider extends AIProvider {
   private genAI: GoogleGenerativeAI;
   private model: any;
   
-  constructor(config: NanoBananaConfig) {
+  constructor(config: AIProviderConfig) {
     super(config);
     
     if (!config.apiKey) {

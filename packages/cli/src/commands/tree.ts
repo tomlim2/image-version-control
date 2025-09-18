@@ -36,7 +36,12 @@ export const treeCommand = new Command('tree')
       
       // Show trees overview if requested
       if (options.treesOnly) {
-        displayTreesOverview(trees, context.currentTree?.id);
+        console.log(chalk.cyan('📁 Available trees:'));
+        trees.forEach(tree => {
+          const isCurrent = tree.id === context.currentTree?.id;
+          console.log(`  ${isCurrent ? '→' : ' '} ${chalk.bold(tree.name)} ${isCurrent ? chalk.gray('(current)') : ''}`);
+          console.log(`    ${chalk.gray(tree.description || 'No description')}`);
+        });
         return;
       }
       
@@ -68,7 +73,17 @@ export const treeCommand = new Command('tree')
       }
       
       // Show full project structure: Project → Trees → Nodes
-      await displayProjectTreeStructure(ivc, trees, searchQuery, options, context.currentNode?.id);
+      console.log(chalk.cyan('📁 Project trees:'));
+      for (const tree of trees) {
+        const isCurrent = tree.id === context.currentTree?.id;
+        console.log(`  ${isCurrent ? '→' : ' '} ${chalk.bold(tree.name)} ${isCurrent ? chalk.gray('(current)') : ''}`);
+        console.log(`    ${chalk.gray(tree.description || 'No description')}`);
+        
+        // Show basic tree stats
+        if (tree.metadata) {
+          console.log(`    ${chalk.gray('Nodes:')} ${tree.metadata.totalNodes} | ${chalk.gray('Size:')} ${(tree.metadata.totalSize / 1024 / 1024).toFixed(1)}MB`);
+        }
+      }
       
       // Show current context
       if (context.currentTree) {
@@ -82,12 +97,6 @@ export const treeCommand = new Command('tree')
         console.log(chalk.gray('   Use'), chalk.cyan('pixtree checkout <node-id>'), chalk.gray('to switch nodes'));
       }
       
-      // Show additional info
-      if (currentNode) {
-        console.log('');
-        console.log(chalk.gray('💡 Current node:'), chalk.cyan(currentNode.id));
-        console.log(chalk.gray('   Use'), chalk.cyan('pixtree checkout <node-id>'), chalk.gray('to switch nodes'));
-      }
       
       // Show helpful commands
       console.log('');

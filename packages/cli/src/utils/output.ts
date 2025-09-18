@@ -76,7 +76,7 @@ export function formatNodeInfo(node: ImageNode): string[] {
   // File info
   lines.push(`📁 ${chalk.gray('Size:')} ${formatFileSize(node.metadata.fileSize)}`);
   lines.push(`📐 ${chalk.gray('Dimensions:')} ${node.metadata.dimensions.width}×${node.metadata.dimensions.height}`);
-  lines.push(`📅 ${chalk.gray('Created:')} ${new Date(node.timestamp).toLocaleString()}`);
+  lines.push(`📅 ${chalk.gray('Created:')} ${new Date(node.createdAt).toLocaleString()}`);
   
   // Status
   if (!node.success && node.error) {
@@ -167,7 +167,7 @@ function getModelBadge(model: string): string {
     case 'nano-banana':
       return chalk.blue('NB');
     case 'seedream-4.0':
-      return chalk.orange('SD');
+      return chalk.yellow('SD');
     default:
       return chalk.gray(model.substring(0, 2).toUpperCase());
   }

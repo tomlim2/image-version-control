@@ -1,6 +1,6 @@
 import { StorageManager } from './storage/index.js';
 import { ProjectManager, TreeManager } from './managers/index.js';
-import { AIProvider, AIProviderRegistry } from './ai/index.js';
+import { AIProvider, AIProviderRegistry } from './types/ai/AIProvider.js';
 import { NanoBananaProvider } from './ai/NanoBananaProvider.js';
 import {
   ImageNode,
@@ -57,8 +57,8 @@ export class Pixtree {
       defaultModel: options.defaultModel || 'nano-banana',
       initialTree: options.initialTree || {
         name: 'Main',
-        type: 'creative',
-        description: 'Default tree for new images'
+        description: 'Default tree for new images',
+        tags: ['creative']
       }
     });
     
@@ -84,8 +84,7 @@ export class Pixtree {
         defaultModel: project.settings.defaultModel
       },
       projectMetadata: {
-        createdAt: project.createdAt,
-        totalProjects: 1
+        createdAt: project.createdAt
       }
     };
     
@@ -131,8 +130,8 @@ export class Pixtree {
         // Create a new tree
         const newTree = await this.treeManager.createTree({
           name: 'Generated Images',
-          type: 'creative',
           description: 'Auto-created tree for image generation',
+          tags: ['creative'],
           projectId: project.id
         });
         targetTreeId = newTree.id;
@@ -215,6 +214,8 @@ export class Pixtree {
       // Create failed node for debugging
       const failedNode: ImageNode = {
         id: nodeId,
+        projectId: project.id,
+        treeId: targetTreeId,
         parentId,
         imagePath: '',
         imageHash: '',
@@ -233,11 +234,19 @@ export class Pixtree {
         },
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date(),
+        createdAt: new Date(),
+        lastAccessed: new Date(),
+        treePosition: {
+          depth: 0,
+          childIndex: 0,
+          hasChildren: false,
+          isLeaf: true
+        },
         metadata: {
           fileSize: 0,
           dimensions: { width: 0, height: 0 },
-          format: 'png'
+          format: 'png',
+          hasAlpha: false
         }
       };
       
@@ -423,7 +432,7 @@ export class Pixtree {
       prompt1,
       prompt2,
       strategy: strategy.type,
-      weights: strategy.weights
+      weights: strategy.weights ? { prompt1: strategy.weights.node1 || 0.5, prompt2: strategy.weights.node2 || 0.5 } : undefined
     });
     
     return {
@@ -517,7 +526,8 @@ export class Pixtree {
     const exportInfo = {
       path: exportPath,
       exportedAt: new Date(),
-      customName
+      customName,
+      format: 'png'
     };
     
     if (!node.exports) {
@@ -588,7 +598,7 @@ export class Pixtree {
     });
     
     return children.sort((a, b) => 
-      new Date(a.node.timestamp).getTime() - new Date(b.node.timestamp).getTime()
+      new Date(a.node.createdAt).getTime() - new Date(b.node.createdAt).getTime()
     );
   }
   
@@ -646,7 +656,7 @@ export class Pixtree {
     
     allKeys.forEach(key => {
       if (config1[key] !== config2[key]) {
-        diff[key] = { node1: config1[key], node2: config2[key] };
+        diff[key] = { prompt1: config1[key], prompt2: config2[key] };
       }
     });
     
@@ -794,7 +804,7 @@ export class Pixtree {
     // Determine target tree for import
     let targetTreeId = options.treeId;
     if (!targetTreeId) {
-      if (context.currentTree && context.currentTree.type === 'reference') {
+      if (context.currentTree && context.currentTree.tags.includes('reference')) {
         // If current tree is reference type, use it
         targetTreeId = context.currentTree.id;
       } else if (project.settings.defaultTreeOnImport) {
@@ -804,10 +814,9 @@ export class Pixtree {
         // Create a new reference tree for imports
         const referenceTree = await this.treeManager.createTree({
           name: options.treeName || 'Imported References',
-          type: options.treeType || 'reference',
           description: 'Auto-created tree for imported images',
           projectId: project.id,
-          tags: options.tags || ['imported']
+          tags: options.tags || ['imported', 'reference']
         });
         targetTreeId = referenceTree.id;
       }
@@ -898,18 +907,18 @@ export class Pixtree {
     if (context.currentTree) {
       const currentTree = context.currentTree;
       
-      // If current tree is reference type and we're importing, it's likely a good match
-      if (currentTree.type === 'reference') {
+      // If current tree has reference tags and we're importing, it's likely a good match
+      if (currentTree.tags.includes('reference')) {
         return currentTree.id;
       }
       
       // If path suggests reference material and current tree accepts references
-      if (pathClues.isReference && ['reference', 'variation'].includes(currentTree.type)) {
+      if (pathClues.isReference && (currentTree.tags.includes('reference') || currentTree.tags.includes('variation'))) {
         return currentTree.id;
       }
       
       // If importing for editing and current tree is creative
-      if (options.importMethod === 'editing-base' && currentTree.type === 'creative') {
+      if (options.importMethod === 'editing-base' && currentTree.tags.includes('creative')) {
         return currentTree.id;
       }
     }
@@ -920,7 +929,7 @@ export class Pixtree {
     // Try to find a reference tree for reference materials
     if (pathClues.isReference) {
       const referenceTrees = allTrees.filter(tree => 
-        tree.type === 'reference' && !tree.archived
+        tree.tags.includes('reference') && !tree.archived
       );
       
       if (referenceTrees.length > 0) {
@@ -943,13 +952,11 @@ export class Pixtree {
     }
     
     // 6. Auto-create appropriate tree based on analysis
-    const treeType = this.determineTreeType(pathClues, options);
-    const treeName = this.generateTreeName(pathClues, treeType);
+    const treeName = this.generateTreeName(pathClues);
     
     const newTree = await this.treeManager.createTree({
       name: treeName,
-      type: treeType,
-      description: `Auto-created tree for ${treeType} imports`,
+      description: `Auto-created tree for imports`,
       projectId: project.id,
       tags: pathClues.suggestedTags
     });
@@ -1050,47 +1057,13 @@ export class Pixtree {
   /**
    * Determine appropriate tree type based on analysis
    */
-  private determineTreeType(
-    pathClues: ReturnType<typeof this.analyzeImportPath>, 
-    options: ImportOptions
-  ): 'creative' | 'reference' | 'variation' | 'experiment' {
-    // Explicit option takes priority
-    if (options.treeType) {
-      return options.treeType;
-    }
-    
-    // Based on import method
-    if (options.importMethod === 'editing-base') {
-      return 'creative';
-    }
-    
-    // Based on path analysis
-    if (pathClues.isReference) {
-      return 'reference';
-    }
-    
-    if (pathClues.category === 'draft' || pathClues.suggestedTags.includes('wip')) {
-      return 'experiment';
-    }
-    
-    // Default based on confidence
-    return pathClues.confidence > 0.5 ? 'reference' : 'creative';
-  }
 
   /**
    * Generate appropriate tree name based on analysis
    */
   private generateTreeName(
-    pathClues: ReturnType<typeof this.analyzeImportPath>, 
-    treeType: 'creative' | 'reference' | 'variation' | 'experiment'
+    pathClues: ReturnType<typeof this.analyzeImportPath>
   ): string {
-    const baseNames = {
-      reference: ['References', 'Inspiration', 'Style Guide', 'Mood Board'],
-      creative: ['Main Work', 'Creative Output', 'Final Designs', 'Artwork'],
-      variation: ['Variations', 'Iterations', 'Alternatives', 'Options'],
-      experiment: ['Experiments', 'Tests', 'Drafts', 'Work in Progress']
-    };
-    
     // Add category-specific naming
     if (pathClues.category === 'source') {
       return 'Source Files';
@@ -1100,9 +1073,18 @@ export class Pixtree {
       return 'Screenshots & References';
     }
     
-    // Use base name for tree type
-    const options = baseNames[treeType];
-    return options[0]; // Use the first option as default
+    // Default tree name based on tags
+    if (pathClues.suggestedTags.includes('reference')) {
+      return 'References';
+    }
+    if (pathClues.suggestedTags.includes('creative')) {
+      return 'Creative Work';
+    }
+    if (pathClues.suggestedTags.includes('experiment')) {
+      return 'Experiments';
+    }
+    
+    return 'Imported Images';
   }
 
   /**

@@ -103,13 +103,13 @@ export abstract class AIProvider {
  * Provider registry for managing multiple AI providers
  */
 export class AIProviderRegistry {
-  private providers = new Map<string, typeof AIProvider>();
+  private providers = new Map<string, new (config: AIProviderConfig) => AIProvider>();
   private instances = new Map<string, AIProvider>();
   
   /**
    * Register a new AI provider
    */
-  register(name: string, providerClass: typeof AIProvider): void {
+  register(name: string, providerClass: new (config: AIProviderConfig) => AIProvider): void {
     this.providers.set(name, providerClass);
   }
   
@@ -146,13 +146,14 @@ export class AIProviderRegistry {
    */
   listProviders(): Array<{
     name: string;
-    features: typeof AIProvider.prototype.supportedFeatures;
+    features: string[];
   }> {
     return Array.from(this.providers.entries()).map(([name, ProviderClass]) => {
-      const tempInstance = new ProviderClass({});
+      // Get default features without instantiating
+      const defaultFeatures = ['text-to-image', 'image-analysis'];
       return {
         name,
-        features: tempInstance.supportedFeatures
+        features: defaultFeatures
       };
     });
   }

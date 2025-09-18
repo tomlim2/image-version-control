@@ -20,16 +20,7 @@ export const initCommand = new Command('init')
       // Initialize project with minimal settings
       await pixtree.init({
         name: projectName,
-        aiProviders: {
-          'nano-banana': {
-            enabled: true,
-            apiKey: '', // Empty - user sets later
-            defaultConfig: {
-              temperature: 1.0,
-              model: 'gemini-2.5-flash-image-preview'
-            }
-          }
-        }
+        defaultModel: 'nano-banana'
       });
       
       // Success message

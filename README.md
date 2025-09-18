@@ -2,32 +2,36 @@
 
 **AI Image Version Control System** - Like Git for your creative AI workflow
 
-Pixtree helps AI artists manage their image generation process with Git-like version control, intelligent tagging, and seamless integration with multiple AI models.
+> ⚠️ **Work in Progress** - Currently under active development. Core functionality is working but some features are still being implemented.
 
-**New in v2.0**: Project-based workflow with Tree organization! Work within **Projects** (땅/land) that contain **Trees** (나무들) of related **Images** (이미지들).
+Pixtree helps AI artists manage their image generation process with Git-like version control, intelligent tagging, and seamless integration with AI models.
+
+**Current Status**: Simplified Project/Tree system with tag-based organization. Each directory = one independent Pixtree project (like Git).
 
 ## ✨ Features
 
-### 🏗️ **Project-Based Organization**
-- **📂 Projects (땅)**: Organize your work into distinct creative projects
-- **🌳 Trees (나무들)**: Group related images by theme, style, or purpose
-- **🖼️ Images (이미지들)**: Individual nodes in your creative branching structure
-- **🔄 Context Management**: Always know where you are in your creative process
+### 🏗️ **Simple Project Organization**
+- **📂 Projects**: Each directory = one independent Pixtree project (Git-style)
+- **🌳 Trees**: Group related images by theme, style, or purpose
+- **🖼️ Images**: Individual nodes with full metadata and version history
+- **🏷️ Tag-Based Classification**: Flexible tagging instead of rigid categories
 
-### 🎨 **Enhanced Creative Workflow**
-- **🤖 Multi-AI Support**: Currently supports Nano Banana (Google Gemini), with more models coming
-- **🏷️ Smart Tagging**: Tag and rate images at project, tree, and image levels
-- **📊 Intelligent Search**: Find images across projects, trees, tags, prompts, and more
-- **📤 Easy Export**: Export your favorite creations with full metadata tracking
-- **💡 Prompt Blending**: Combine prompts from different images (coming soon)
+### 🎨 **Creative Workflow**
+- **🤖 AI Support**: Currently supports Nano Banana (Google Gemini)
+- **⚡ Instant Setup**: `pixtree init` - no complex configuration needed
+- **📊 Smart Search**: Find images by tags, prompts, ratings, and more  
+- **📤 Easy Export**: Export your creations with metadata tracking
+- **⚙️ Simple Config**: Minimal configuration, maximum usability
 
-### 📈 **Advanced Management**
-- **📊 Rich Statistics**: Track usage, ratings, and activity across your entire workflow
-- **🎯 Tree Types**: Organize by purpose - creative, reference, variation, experiment
-- **🔍 Context-Aware Import**: Smart tree assignment when importing reference images
-- **⚡ Performance**: Optimized storage with hash-based deduplication
+### 📈 **Core Management**  
+- **📊 Project Statistics**: Track usage, ratings, and activity
+- **⚡ Performance**: Hash-based image deduplication prevents bloat
+- **🔍 Metadata Rich**: Full AI generation parameters preserved
+- **🏷️ Rating System**: 1-5 star rating for quality tracking
 
 ## 🚀 Quick Start
+
+> ⚠️ **Note**: `import` command is currently being implemented. For now, you can use `generate` to create images.
 
 ### Installation
 
@@ -41,85 +45,72 @@ npm install -g pixtree
 # Create a new directory for your AI art project
 mkdir my-ai-art && cd my-ai-art
 
-# Initialize pixtree with project setup
+# Initialize pixtree (instant, no prompts)
 pixtree init
-# ✨ Interactive setup will guide you through:
-#   - Project name and description
-#   - Default AI model selection
-#   - Initial tree creation
+# ✅ Creates .pixtree/ structure
+# ✅ Uses directory name as project name
 
 # Set your API key
 pixtree config set apiKey your-google-gemini-api-key
+
+# Import your first image (creates a tree automatically)
+pixtree import photo.jpg  # ← Coming soon!
 ```
 
 ### Generate Your First Image
 
 ```bash
-# Generate an image (automatically uses current project/tree context)
+# Generate an image
 pixtree generate "a cute cat wearing a wizard hat"
 
-# View your project structure
-pixtree status                           # See current context
-pixtree tree                            # View current tree
-pixtree project tree-list               # List all trees in project
+# View your project structure  
+pixtree tree                            # View project tree hierarchy
 
-# Generate a variation in the same tree
+# Generate a variation
 pixtree generate "same cat, but with a red hat" --tags "variation,red"
 
-# Create a new tree for experiments
-pixtree tree create "Cat Experiments" --type experiment
-pixtree generate "cyberpunk cat with neon eyes" --tree "Cat Experiments"
+# Add tags to organize your work
+pixtree tag node-123 "favorite" "cats" "wizard"
 ```
 
-## 📋 Core Commands
+## 📋 Available Commands
 
-### Project Management
+### Project Setup
 ```bash
-pixtree init                              # Initialize new project (interactive)
-pixtree status                            # Show current context and project info
-pixtree project list                      # List all projects
-pixtree project switch <project-name>     # Switch to different project
+pixtree init                              # Initialize new project (instant)
 pixtree config list                       # View configuration
 pixtree config set apiKey <key>           # Set API key
+pixtree config test                       # Test API connection
 ```
 
-### Tree Management
+### Core Workflow
 ```bash
-pixtree tree                              # Show current tree structure
-pixtree tree create "Tree Name" --type creative  # Create new tree
-pixtree tree list                         # List all trees in project
-pixtree tree switch <tree-name>           # Switch to different tree
-pixtree tree info <tree-name>             # Show tree statistics
-pixtree tree archive <tree-name>          # Archive completed tree
-```
+# ⚠️ Not yet implemented
+pixtree import image.jpg                  # Import image (creates tree)
 
-### Image Generation
-```bash
-pixtree generate "prompt"                 # Generate in current tree
-pixtree generate "prompt" --tree "Tree Name"    # Generate in specific tree
-pixtree generate "prompt" --tags "style,cool"   # Add tags
-pixtree generate "prompt" --rating 5      # Set initial rating
-pixtree generate "prompt" --purpose "final design"  # Set purpose
+# ✅ Working
+pixtree generate "prompt"                 # Generate AI image
+pixtree tree                             # Show project tree structure
+pixtree export node-123                  # Export image
 ```
 
 ### Organization & Tagging
 ```bash
-pixtree tag node-123 "favorite" "best"   # Add tags to image
-pixtree tag tree-456 "character-design"  # Add tags to tree
+pixtree tag node-123 "favorite" "cats"   # Add tags to image
 pixtree tag node-123 --rating 5          # Set rating
-pixtree tag node-123 --favorite          # Mark as favorite
-pixtree tree --tags "favorite"           # Filter current tree by tags
-pixtree search --tags "character" --rating 4    # Search across project
+pixtree tree --tags "favorite"           # Filter by tags
 ```
 
-### Navigation & Context
+### Navigation
 ```bash
 pixtree checkout node-123                 # Switch to specific node
-pixtree checkout tree-456                 # Switch to specific tree
-pixtree back                             # Go back to previous context
-pixtree export node-123                  # Export image
-pixtree export node-123 ~/Desktop/art.png  # Export to specific path
+pixtree export node-123 ~/art.png        # Export to specific path
 ```
+
+### Current Limitations
+- ⚠️ **Missing**: `import` command (being implemented)
+- ⚠️ **Limited**: Tree management commands
+- ⚠️ **Single Model**: Only Nano Banana (Google Gemini) supported
 
 ## 🏗️ Project Structure
 
@@ -147,19 +138,24 @@ your-project/
 ### Hierarchy Explained
 
 ```
-📂 Project (땅 - Land)
-├── 🌳 Tree: "Character Design" (creative)
-│   ├── 🖼️ Initial concept
+📂 Project (current directory)
+├── 🌳 Tree: "portraits" [creative, faces]
+│   ├── 🖼️ Initial concept ⭐
 │   ├── 🖼️ ├─ Style variation 1
 │   ├── 🖼️ ├─ Style variation 2
-│   └── 🖼️ └─ Final design
-├── 🌳 Tree: "Reference Images" (reference)
+│   └── 🖼️ └─ Final design ⭐⭐⭐⭐⭐
+├── 🌳 Tree: "references" [reference, inspiration]
 │   ├── 🖼️ Art style refs
 │   └── 🖼️ Color palette refs
-└── 🌳 Tree: "Experiments" (experiment)
-    ├── 🖼️ Wild idea 1
-    └── 🖼️ Wild idea 2
+└── 🌳 Tree: "experiments" [testing, wild-ideas]
+    ├── 🖼️ Crazy idea 1
+    └── 🖼️ Crazy idea 2
 ```
+
+**Key Changes:**
+- ✅ Flexible tag-based classification: `[creative, faces]` instead of rigid `(creative)`
+- ✅ Rating system: ⭐⭐⭐⭐⭐ (1-5 stars)
+- ✅ User-defined organization via tags
 
 ## 🤖 Supported AI Models
 
@@ -174,133 +170,70 @@ your-project/
 - **DALL-E 3** (OpenAI)
 - **Midjourney** (via API)
 
-## 📊 Advanced Features
-
-### Smart Filtering
-```bash
-# Find all cat images with high ratings
-pixtree tree --tags "cat" --rating 4
-
-# Show only generated images from last week
-pixtree tree --generated --since 2025-09-10
-
-# Find favorite variations
-pixtree tree --favorites --tags "variation"
-```
-
-### Tagging System
-```bash
-# Add multiple tags
-pixtree tag node-123 "character" "fantasy" "final"
-
-# Remove tags
-pixtree tag node-123 --remove "draft,wip"
-
-# List all tags in project
-pixtree tag --list
-
-# Search by tags
-pixtree tree --tags "character,fantasy"
-```
-
-### Export Management
-```bash
-# Export with custom name
-pixtree export node-123 --name "final-character-design"
-
-# Export to specific location
-pixtree export node-123 exports/portfolio/character.png
-
-# Batch export favorites
-for node in $(pixtree tree --favorites --format=ids); do
-  pixtree export $node exports/favorites/
-done
-```
-
 ## 🔧 Configuration
 
-### Project Settings
-```bash
-pixtree config set defaultModel nano-banana
-pixtree config set autoExportFavorites true
-pixtree config set maxStorageSize 10GB
-```
+Simple configuration system - no complex settings needed!
 
-### API Keys
+### API Setup
 ```bash
-# Set Nano Banana API key
+# Set your Google Gemini API key
 pixtree config set apiKey your-gemini-api-key
 
 # Test connection
-pixtree config test nano-banana
+pixtree config test
+
+# View current settings
+pixtree config list
 ```
 
-### View Configuration
+### Project Statistics
 ```bash
-pixtree config list    # Show all settings
 pixtree config stats   # Show project statistics
 ```
 
-## 🎯 Workflow Examples
+**Simplified Settings:**
+- ✅ Only essential configuration: API key and default model
+- ✅ No complex auto-features - everything is manual and predictable
+- ✅ Git-like simplicity
 
-### Character Design Workflow
+## 🎯 Simple Workflow Example
+
+> ⚠️ **Note**: This shows the planned workflow. `import` command is still being implemented.
+
+### Basic Creative Workflow
 ```bash
-# 1. Create dedicated project and tree
-pixtree init
-# > Project name: "Fantasy Game Characters"
-# > Create initial tree: "Warrior Design" (creative)
+# 1. Initialize project
+cd my-artwork
+pixtree init                # Instant setup
 
-# 2. Initial concept
+# 2. Set up API key  
+pixtree config set apiKey sk-...
+
+# 3. Import reference image (creates tree automatically)
+pixtree import reference.jpg  # ← Coming soon!
+
+# 4. Generate variations
 pixtree generate "fantasy warrior character" --tags "character,concept"
+pixtree generate "same character, different armor" --tags "armor,variation"
 
-# 3. Explore variations in same tree
-pixtree generate "same character, different armor" --tags "character,armor"
-pixtree generate "same character, different pose" --tags "character,pose"
-
-# 4. Create reference tree for inspiration
-pixtree tree create "Reference Art" --type reference
-pixtree import warrior-ref.jpg --tree "Reference Art" --description "Art style inspiration"
-
-# 5. Refine favorites and export
-pixtree tag node-abc --rating 5 --favorite
-pixtree generate "enhance details, add magical effects" --tags "character,final"
-pixtree export node-xyz exports/characters/warrior-final.png
+# 5. Organize and export
+pixtree tag node-abc --rating 5
+pixtree tree                # View structure
+pixtree export node-abc ~/final-character.png
 ```
 
-### Multi-Project Portfolio Workflow
+### Multi-Project Setup (Git-style)
 ```bash
-# 1. Different projects for different clients/themes
-pixtree init  # "Client A - Brand Identity"
-pixtree generate "modern minimalist logo" --tags "logo,minimalist"
+# Each directory = independent project
+mkdir client-a && cd client-a
+pixtree init
+pixtree generate "minimalist logo design"
 
-cd ../client-b-project
-pixtree init  # "Client B - Game Assets"
-pixtree tree create "Character Concepts" --type creative
-pixtree tree create "Environment Art" --type creative
-pixtree generate "cyberpunk cityscape" --tree "Environment Art"
+cd ../personal-art  
+pixtree init
+pixtree generate "surreal landscape"
 
-# 2. Switch between projects easily
-pixtree project list
-pixtree project switch "Client A - Brand Identity"
-pixtree status  # See current context
-```
-
-### Style Exploration Workflow
-```bash
-# 1. Create experiment tree for style tests
-pixtree tree create "Landscape Styles" --type experiment
-
-# 2. Base image
-pixtree generate "peaceful mountain landscape" --tags "landscape,base"
-
-# 3. Style variations in organized manner
-pixtree generate "same landscape, anime style" --tags "anime,style-test"
-pixtree generate "same landscape, oil painting style" --tags "painting,style-test"
-pixtree generate "same landscape, cyberpunk style" --tags "cyberpunk,style-test"
-
-# 4. Compare across entire project
-pixtree search --tags "style-test" --rating 3
-pixtree tree info "Landscape Styles"  # See statistics
+# No project switching needed - just cd to the directory!
 ```
 
 ## 🛠️ Development
@@ -339,15 +272,15 @@ pixtree/
 
 ### Core Classes
 
-#### `ImageVersionControl`
-Main class for managing image version control.
+#### `Pixtree`
+Main class for managing image version control (renamed from ImageVersionControl).
 
 ```typescript
-import { ImageVersionControl } from '@pixtree/core';
+import { Pixtree } from '@pixtree/core';
 
-const ivc = new ImageVersionControl('./my-project');
-await ivc.init({ name: 'My Project' });
-const node = await ivc.generate('a cute cat');
+const pixtree = new Pixtree('./my-project');
+await pixtree.init({ name: 'My Project' });
+const node = await pixtree.generate('a cute cat');
 ```
 
 #### `StorageManager`
@@ -361,37 +294,32 @@ Abstract base class for AI model integrations.
 All TypeScript types are available from `@pixtree/core`:
 
 ```typescript
-import { ImageNode, ProjectConfig, TreeNode } from '@pixtree/core';
+import { ImageNode, ProjectConfig, Tree, Project } from '@pixtree/core';
 ```
 
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
-### Roadmap
+### Current Status & Roadmap
 
-#### ✅ **v2.0 - Project/Tree System** (Current)
-- [x] Project-based organization with Tree hierarchy
-- [x] Enhanced type system with comprehensive metadata
-- [x] Context-aware workspace management
-- [ ] Enhanced StorageManager for Project/Tree
-- [ ] ProjectManager and TreeManager classes
-- [ ] Updated CLI commands for Project/Tree workflow
+#### ✅ **Completed (Recent Simplification)**
+- [x] Simplified Project/Tree system with tag-based classification
+- [x] Single project model (Git-style: each directory = one project)  
+- [x] ImageVersionControl → Pixtree rebranding
+- [x] Minimal configuration system (no complex auto-features)
+- [x] CLI commands: init, generate, tree, tag, export, config
 
-#### 🔄 **v2.1 - Enhanced Workflow** (Next)
-- [ ] Prompt blending with AI preview
-- [ ] Advanced search across projects
-- [ ] Tree archiving and backup systems
-- [ ] Import workflow with smart tree assignment
-- [ ] Comprehensive statistics dashboard
+#### 🔄 **Currently Working On**
+- [ ] **Critical**: `import` command implementation
+- [ ] TypeScript compilation error fixes
+- [ ] Enhanced tree management commands
 
-#### 🚀 **v3.0 - Advanced Features** (Future)
-- [ ] Advanced image diff with AI highlighting
-- [ ] Seedream 4.0 integration
+#### 🚀 **Next Steps**
+- [ ] Complete import workflow with automatic tree creation
+- [ ] Advanced search and filtering
+- [ ] Additional AI model support (Seedream 4.0, DALL-E 3)
 - [ ] Web interface for visual project management
-- [ ] Team collaboration features
-- [ ] Plugin system for custom AI models
-- [ ] AI-powered project insights and suggestions
 
 ## 📄 License
 

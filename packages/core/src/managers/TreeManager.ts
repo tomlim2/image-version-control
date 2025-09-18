@@ -32,7 +32,6 @@ export class TreeManager {
       description: options.description,
       createdAt: now,
       lastAccessed: now,
-      type: options.type,
       purpose: options.purpose,
       metadata: {
         totalNodes: 0,
@@ -249,13 +248,6 @@ export class TreeManager {
     });
   }
 
-  /**
-   * Get trees by type
-   */
-  async getTreesByType(type: 'creative' | 'reference' | 'variation' | 'experiment'): Promise<Tree[]> {
-    const allTrees = await this.storage.loadAllTrees();
-    return allTrees.filter(tree => tree.type === type);
-  }
 
   /**
    * Get archived trees
@@ -307,20 +299,24 @@ export class TreeManager {
         }
       }
 
-      // Recommend trees with similar type to current
+      // Recommend trees with similar tags to current
       if (context.currentTree) {
-        const similarTrees = allTrees.filter(tree => 
-          tree.type === context.currentTree!.type && 
-          tree.id !== context.currentTree!.id &&
-          !tree.archived
-        ).slice(0, 2);
-        
-        similarTrees.forEach(tree => {
-          recommendations.push({
-            tree,
-            reason: `Similar type (${tree.type})`
+        const currentTags = context.currentTree.tags;
+        if (currentTags.length > 0) {
+          const similarTrees = allTrees.filter(tree => 
+            tree.tags.some(tag => currentTags.includes(tag)) &&
+            tree.id !== context.currentTree!.id &&
+            !tree.archived
+          ).slice(0, 2);
+          
+          similarTrees.forEach(tree => {
+            const sharedTags = tree.tags.filter(tag => currentTags.includes(tag));
+            recommendations.push({
+              tree,
+              reason: `Similar tags (${sharedTags.join(', ')})`
+            });
           });
-        });
+        }
       }
 
       // Recommend favorite trees

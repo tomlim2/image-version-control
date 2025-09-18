@@ -467,7 +467,7 @@ export class StorageManager {
       
       // Date range filter
       if (query.dateRange) {
-        const nodeDate = new Date(node.timestamp);
+        const nodeDate = new Date(node.createdAt);
         if (query.dateRange.from && nodeDate < query.dateRange.from) return false;
         if (query.dateRange.to && nodeDate > query.dateRange.to) return false;
       }

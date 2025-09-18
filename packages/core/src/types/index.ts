@@ -2,5 +2,14 @@
  * Central exports for all Pixtree types
  */
 
-export * from './ImageNode.js';
-export * from './AIProvider.js';
+// Core domain types
+export * from './core/index.js';
+
+// Configuration types
+export * from './config/index.js';
+
+// Operation types
+export * from './operations/index.js';
+
+// AI provider types
+export * from './ai/index.js';
