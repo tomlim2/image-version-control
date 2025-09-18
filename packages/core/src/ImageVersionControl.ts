@@ -79,19 +79,9 @@ export class ImageVersionControl {
         }
       },
       storage: {
-        autoCleanup: false,
-        compressionThreshold: 2,
-        deleteThreshold: 1,
-        maxStorageSize: '10GB',
-        backupFrequency: 'never'
       },
       preferences: {
-        defaultModel: project.settings.defaultModel,
-        autoExportFavorites: false,
-        showThumbnails: true,
-        defaultTreeType: 'creative',
-        autoCreateTreeOnImport: true,
-        promptSuggestions: true
+        defaultModel: project.settings.defaultModel
       },
       projectMetadata: {
         createdAt: project.createdAt,

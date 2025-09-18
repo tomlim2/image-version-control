@@ -46,8 +46,6 @@ export const configCommand = new Command('config')
           console.log(chalk.yellow('Common settings:'));
           console.log(`   ${chalk.cyan('apiKey')}                                # Nano Banana API key`);
           console.log(`   ${chalk.cyan('defaultModel')}                          # Default AI model`);
-          console.log(`   ${chalk.cyan('autoExportFavorites')}                   # Auto-export favorites`);
-          console.log(`   ${chalk.cyan('autoCleanup')}                           # Enable auto cleanup`);
           console.log('');
           console.log(chalk.yellow('Examples:'));
           console.log(`   ${chalk.cyan('pixtree config set apiKey sk-...')}      # Set API key`);
@@ -101,20 +99,8 @@ async function handleSet(ivc: ImageVersionControl, key: string, value: string) {
       console.log(chalk.green('✅ Default model updated'));
       break;
       
-    case 'autoExportFavorites':
-      config.preferences.autoExportFavorites = parseBoolean(value);
-      console.log(chalk.green('✅ Auto-export favorites updated'));
-      break;
       
-    case 'autoCleanup':
-      config.storage.autoCleanup = parseBoolean(value);
-      console.log(chalk.green('✅ Auto-cleanup updated'));
-      break;
       
-    case 'maxStorageSize':
-      config.storage.maxStorageSize = value;
-      console.log(chalk.green('✅ Max storage size updated'));
-      break;
       
     default:
       // Try to set nested value
@@ -146,17 +132,11 @@ async function handleList(ivc: ImageVersionControl) {
   
   console.log(chalk.yellow('Preferences:'));
   console.log(`   ${chalk.gray('Default model:')} ${config.preferences.defaultModel}`);
-  console.log(`   ${chalk.gray('Auto-export favorites:')} ${config.preferences.autoExportFavorites ? 'yes' : 'no'}`);
-  console.log(`   ${chalk.gray('Show thumbnails:')} ${config.preferences.showThumbnails ? 'yes' : 'no'}`);
   console.log('');
   
   console.log(chalk.yellow('Storage:'));
-  console.log(`   ${chalk.gray('Auto-cleanup:')} ${config.storage.autoCleanup ? 'enabled' : 'disabled'}`);
-  console.log(`   ${chalk.gray('Compression threshold:')} ${config.storage.compressionThreshold} stars`);
-  console.log(`   ${chalk.gray('Delete threshold:')} ${config.storage.deleteThreshold} stars`);
-  if (config.storage.maxStorageSize) {
-    console.log(`   ${chalk.gray('Max storage size:')} ${config.storage.maxStorageSize}`);
-  }
+  console.log(`   ${chalk.gray('(No storage settings configured)')}`);
+  console.log('');
 }
 
 async function handleTest(ivc: ImageVersionControl, provider?: string) {

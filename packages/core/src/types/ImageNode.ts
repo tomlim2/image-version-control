@@ -50,9 +50,8 @@ export interface Tree {
   createdAt: Date;
   lastAccessed: Date;
   
-  // Tree type and purpose
-  type: 'creative' | 'reference' | 'variation' | 'experiment';
-  purpose?: string; // user-defined purpose
+  // Tree purpose (user-defined)
+  purpose?: string;
   
   // Tree metadata
   metadata: {
@@ -182,24 +181,14 @@ export interface ProjectConfig {
     };
   };
   
-  // Storage settings
+  // Storage settings (simplified)
   storage: {
-    autoCleanup: boolean;
-    compressionThreshold: number; // rating below which to compress
-    deleteThreshold: number; // rating below which to delete
-    maxStorageSize?: string; // e.g., "10GB"
-    backupFrequency: 'never' | 'daily' | 'weekly';
+    // Future: could add storage-related settings here
   };
   
   // User preferences
   preferences: {
     defaultModel: string;
-    autoExportFavorites: boolean;
-    autoExportPath?: string;
-    showThumbnails: boolean;
-    defaultTreeType: 'creative' | 'reference' | 'variation' | 'experiment';
-    autoCreateTreeOnImport: boolean;
-    promptSuggestions: boolean;
   };
   
   // Project-level metadata
@@ -249,7 +238,7 @@ export interface ImportOptions {
   importMethod: 'root' | 'child' | 'editing-base';
   analyzeWithAI?: boolean;
   tags?: string[];
-  treeType?: 'creative' | 'reference' | 'variation' | 'experiment';
+  treeTags?: string[]; // tags for new tree if auto-creating
   treeName?: string; // name for new tree if auto-creating
   purpose?: string;
 }
@@ -260,14 +249,13 @@ export interface ProjectCreationOptions {
   defaultModel?: string;
   initialTree?: {
     name: string;
-    type: 'creative' | 'reference' | 'variation' | 'experiment';
     description?: string;
+    tags?: string[];
   };
 }
 
 export interface TreeCreationOptions {
   name: string;
-  type: 'creative' | 'reference' | 'variation' | 'experiment';
   description?: string;
   purpose?: string;
   tags?: string[];
@@ -293,7 +281,7 @@ export interface SearchOptions {
 }
 
 export interface ProjectSearchOptions extends SearchOptions {
-  treeTypes?: ('creative' | 'reference' | 'variation' | 'experiment')[];
+  treeTags?: string[]; // filter by tree tags instead of types
 }
 
 // ===== CONTEXT MANAGEMENT =====
