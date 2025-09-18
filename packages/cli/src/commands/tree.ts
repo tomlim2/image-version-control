@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { ImageVersionControl } from '@pixtree/core';
+import { Pixtree } from '@pixtree/core';
 import { getProjectPath } from '../utils/config.js';
 import { displayTree, showError } from '../utils/output.js';
 
@@ -18,13 +18,13 @@ export const treeCommand = new Command('tree')
   .action(async (options) => {
     try {
       const projectPath = getProjectPath(options);
-      const ivc = new ImageVersionControl(projectPath);
+      const pixtree = new Pixtree(projectPath);
       
       // Get project and workspace context
       const [project, context, trees] = await Promise.all([
-        ivc.getProject(),
-        ivc.getWorkspaceContext(),
-        ivc.getTrees()
+        pixtree.getProject(),
+        pixtree.getWorkspaceContext(),
+        pixtree.getTrees()
       ]);
       
       // Show project header

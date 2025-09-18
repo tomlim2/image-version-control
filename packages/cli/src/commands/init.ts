@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { ImageVersionControl } from '@pixtree/core';
+import { Pixtree } from '@pixtree/core';
 import { getProjectPath } from '../utils/config.js';
 
 export const initCommand = new Command('init')
@@ -8,7 +8,7 @@ export const initCommand = new Command('init')
   .action(async (options) => {
     try {
       const projectPath = getProjectPath(options);
-      const ivc = new ImageVersionControl(projectPath);
+      const pixtree = new Pixtree(projectPath);
       
       console.log(chalk.cyan('🌳 Initializing Pixtree project...'));
       console.log('');
@@ -18,7 +18,7 @@ export const initCommand = new Command('init')
       const projectName = currentDirName || 'main';
       
       // Initialize project with minimal settings
-      await ivc.init({
+      await pixtree.init({
         name: projectName,
         aiProviders: {
           'nano-banana': {

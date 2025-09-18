@@ -2,7 +2,7 @@
  * Pixtree Core - Main exports
  */
 
-export { ImageVersionControl } from './ImageVersionControl.js';
+export { Pixtree } from './Pixtree.js';
 export * from './types/index.js';
 export * from './storage/index.js';
 export * from './ai/index.js';

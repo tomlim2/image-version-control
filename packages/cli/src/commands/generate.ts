@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import ora from 'ora';
-import { ImageVersionControl } from '@pixtree/core';
+import { Pixtree } from '@pixtree/core';
 import { getProjectPath } from '../utils/config.js';
 import { showSuccess, showError, formatNodeInfo } from '../utils/output.js';
 
@@ -21,7 +21,7 @@ export const generateCommand = new Command('generate')
   .action(async (prompt, options) => {
     try {
       const projectPath = getProjectPath(options);
-      const ivc = new ImageVersionControl(projectPath);
+      const pixtree = new Pixtree(projectPath);
       
       // Validate inputs
       if (!prompt || prompt.trim().length === 0) {
@@ -64,7 +64,7 @@ export const generateCommand = new Command('generate')
       
       try {
         // Generate image
-        const node = await ivc.generate(prompt, {
+        const node = await pixtree.generate(prompt, {
           model: options.model,
           parentId: options.parent,
           modelConfig: {

@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
-import { ImageVersionControl } from '@pixtree/core';
+import { Pixtree } from '@pixtree/core';
 import { getProjectPath, formatFileSize } from '../utils/config.js';
 import { showSuccess, showError } from '../utils/output.js';
 
@@ -14,23 +14,23 @@ export const configCommand = new Command('config')
   .action(async (action, key, value, options) => {
     try {
       const projectPath = getProjectPath(options);
-      const ivc = new ImageVersionControl(projectPath);
+      const pixtree = new Pixtree(projectPath);
       
       switch (action) {
         case 'get':
-          await handleGet(ivc, key);
+          await handleGet(pixtree, key);
           break;
         case 'set':
-          await handleSet(ivc, key, value);
+          await handleSet(pixtree, key, value);
           break;
         case 'list':
-          await handleList(ivc);
+          await handleList(pixtree);
           break;
         case 'test':
-          await handleTest(ivc, key);
+          await handleTest(pixtree, key);
           break;
         case 'stats':
-          await handleStats(ivc);
+          await handleStats(pixtree);
           break;
         default:
           // Show help
@@ -65,12 +65,12 @@ export const configCommand = new Command('config')
     }
   });
 
-async function handleGet(ivc: ImageVersionControl, key: string) {
+async function handleGet(pixtree: Pixtree, key: string) {
   if (!key) {
     throw new Error('Key is required for get operation');
   }
   
-  const config = await (ivc as any).storage.loadConfig();
+  const config = await (pixtree as any).storage.loadConfig();
   const value = getNestedValue(config, key);
   
   if (value === undefined) {
@@ -80,12 +80,12 @@ async function handleGet(ivc: ImageVersionControl, key: string) {
   }
 }
 
-async function handleSet(ivc: ImageVersionControl, key: string, value: string) {
+async function handleSet(pixtree: Pixtree, key: string, value: string) {
   if (!key || value === undefined) {
     throw new Error('Both key and value are required for set operation');
   }
   
-  const config = await (ivc as any).storage.loadConfig();
+  const config = await (pixtree as any).storage.loadConfig();
   
   // Handle special keys
   switch (key) {
@@ -108,11 +108,11 @@ async function handleSet(ivc: ImageVersionControl, key: string, value: string) {
       console.log(chalk.green(`✅ ${key} updated`));
   }
   
-  await (ivc as any).storage.saveConfig(config);
+  await (pixtree as any).storage.saveConfig(config);
 }
 
-async function handleList(ivc: ImageVersionControl) {
-  const config = await (ivc as any).storage.loadConfig();
+async function handleList(pixtree: Pixtree) {
+  const config = await (pixtree as any).storage.loadConfig();
   
   console.log(chalk.cyan('🔧 Project Configuration'));
   console.log('');
@@ -139,8 +139,8 @@ async function handleList(ivc: ImageVersionControl) {
   console.log('');
 }
 
-async function handleTest(ivc: ImageVersionControl, provider?: string) {
-  const config = await (ivc as any).storage.loadConfig();
+async function handleTest(pixtree: Pixtree, provider?: string) {
+  const config = await (pixtree as any).storage.loadConfig();
   const providersToTest = provider ? [provider] : Object.keys(config.aiProviders);
   
   console.log(chalk.cyan('🧪 Testing AI provider connections...'));
@@ -178,8 +178,8 @@ async function handleTest(ivc: ImageVersionControl, provider?: string) {
   }
 }
 
-async function handleStats(ivc: ImageVersionControl) {
-  const stats = await ivc.getStats();
+async function handleStats(pixtree: Pixtree) {
+  const stats = await pixtree.getStats();
   
   console.log(chalk.cyan('📊 Project Statistics'));
   console.log('');

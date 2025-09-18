@@ -23,7 +23,7 @@ import {
 import fs from 'fs-extra';
 import path from 'path';
 
-export class ImageVersionControl {
+export class Pixtree {
   private storage: StorageManager;
   private projectManager: ProjectManager;
   private treeManager: TreeManager;

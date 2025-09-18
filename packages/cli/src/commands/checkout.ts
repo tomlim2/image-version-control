@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { ImageVersionControl } from '@pixtree/core';
+import { Pixtree } from '@pixtree/core';
 import { getProjectPath } from '../utils/config.js';
 import { showSuccess, showError, formatNodeInfo } from '../utils/output.js';
 
@@ -11,10 +11,10 @@ export const checkoutCommand = new Command('checkout')
   .action(async (nodeId, options) => {
     try {
       const projectPath = getProjectPath(options);
-      const ivc = new ImageVersionControl(projectPath);
+      const pixtree = new Pixtree(projectPath);
       
       // Checkout node
-      const node = await ivc.checkout(nodeId);
+      const node = await pixtree.checkout(nodeId);
       
       console.log(chalk.green('✅ Switched to node:'), chalk.cyan(nodeId));
       console.log('');

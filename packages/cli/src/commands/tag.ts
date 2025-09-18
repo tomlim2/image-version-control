@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { ImageVersionControl } from '@pixtree/core';
+import { Pixtree } from '@pixtree/core';
 import { getProjectPath } from '../utils/config.js';
 import { showSuccess, showError, formatNodeInfo } from '../utils/output.js';
 
@@ -17,11 +17,11 @@ export const tagCommand = new Command('tag')
   .action(async (nodeId, tags, options) => {
     try {
       const projectPath = getProjectPath(options);
-      const ivc = new ImageVersionControl(projectPath);
+      const pixtree = new Pixtree(projectPath);
       
       if (options.list) {
         // Show all tags in project
-        const allNodes = await ivc.search({});
+        const allNodes = await pixtree.search({});
         const allTags = new Set<string>();
         
         allNodes.forEach(node => {
@@ -48,7 +48,7 @@ export const tagCommand = new Command('tag')
       }
       
       // Get current node
-      const node = await ivc.search({ text: nodeId });
+      const node = await pixtree.search({ text: nodeId });
       if (node.length === 0) {
         throw new Error(`Node not found: ${nodeId}`);
       }
@@ -114,7 +114,7 @@ export const tagCommand = new Command('tag')
       
       // Apply updates
       if (Object.keys(updates).length > 0) {
-        const updatedNode = await ivc.updateNode(nodeId, updates);
+        const updatedNode = await pixtree.updateNode(nodeId, updates);
         
         console.log('');
         console.log(chalk.cyan('📋 Updated node:'));

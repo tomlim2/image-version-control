@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import path from 'path';
-import { ImageVersionControl } from '@pixtree/core';
+import { Pixtree } from '@pixtree/core';
 import { getProjectPath } from '../utils/config.js';
 import { showSuccess, showError } from '../utils/output.js';
 
@@ -16,10 +16,10 @@ export const exportCommand = new Command('export')
   .action(async (nodeId, outputPath, options) => {
     try {
       const projectPath = getProjectPath(options);
-      const ivc = new ImageVersionControl(projectPath);
+      const pixtree = new Pixtree(projectPath);
       
       // Get node info
-      const nodes = await ivc.search({ text: nodeId });
+      const nodes = await pixtree.search({ text: nodeId });
       if (nodes.length === 0) {
         throw new Error(`Node not found: ${nodeId}`);
       }
@@ -56,7 +56,7 @@ export const exportCommand = new Command('export')
       console.log('');
       
       // Export the image
-      await ivc.export(nodeId, finalOutputPath, options.name);
+      await pixtree.export(nodeId, finalOutputPath, options.name);
       
       console.log(chalk.green('✅ Image exported successfully!'));
       console.log('');
