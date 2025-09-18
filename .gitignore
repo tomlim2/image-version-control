@@ -105,3 +105,5 @@ jspm_packages/
 examples/*/node_modules/
 examples/*/.pixtree/
 test-projects/
+
+CLAUDE.md
