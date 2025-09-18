@@ -706,9 +706,9 @@ export class ImageVersionControl {
   }
 
   /**
-   * Get current project
+   * Get project (single project per workspace)
    */
-  async getCurrentProject(): Promise<Project> {
+  async getProject(): Promise<Project> {
     return await this.projectManager.getProject();
   }
 

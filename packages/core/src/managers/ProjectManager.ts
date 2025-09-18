@@ -71,8 +71,7 @@ export class ProjectManager {
       await this.storage.saveProject(project);
     }
 
-    // Set as current project
-    await this.storage.setCurrentProject(project);
+    // Project is automatically current in single project mode
 
     return project;
   }
@@ -152,8 +151,8 @@ export class ProjectManager {
   /**
    * Initialize project in workspace context
    */
-  async initializeInContext(project: Project): Promise<void> {
-    await this.storage.setCurrentProject(project);
+  async initializeInContext(_project: Project): Promise<void> {
+    // Single project mode - no context switching needed
   }
 
   /**

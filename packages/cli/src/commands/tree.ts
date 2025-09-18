@@ -22,7 +22,7 @@ export const treeCommand = new Command('tree')
       
       // Get project and workspace context
       const [project, context, trees] = await Promise.all([
-        ivc.getCurrentProject(),
+        ivc.getProject(),
         ivc.getWorkspaceContext(),
         ivc.getTrees()
       ]);

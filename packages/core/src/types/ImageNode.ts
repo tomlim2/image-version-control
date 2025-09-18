@@ -206,7 +206,6 @@ export interface ProjectConfig {
   projectMetadata: {
     createdAt: Date;
     lastBackup?: Date;
-    totalProjects: number; // for this pixtree installation
   };
 }
 
@@ -294,17 +293,14 @@ export interface SearchOptions {
 }
 
 export interface ProjectSearchOptions extends SearchOptions {
-  projectIds?: string[];
   treeTypes?: ('creative' | 'reference' | 'variation' | 'experiment')[];
 }
 
 // ===== CONTEXT MANAGEMENT =====
 
 export interface WorkspaceContext {
-  currentProject?: Project;
   currentTree?: Tree;
   currentNode?: ImageNode;
-  recentProjects: Project[];
   recentTrees: Tree[];
 }
 

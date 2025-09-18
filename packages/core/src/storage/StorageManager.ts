@@ -49,7 +49,6 @@ export class StorageManager {
     
     // Initialize empty context
     const initialContext: WorkspaceContext = {
-      recentProjects: [],
       recentTrees: []
     };
     await this.saveContext(initialContext);
@@ -206,7 +205,6 @@ export class StorageManager {
   async loadContext(): Promise<WorkspaceContext> {
     if (!(await fs.pathExists(this.contextPath))) {
       return {
-        recentProjects: [],
         recentTrees: []
       };
     }
@@ -223,22 +221,6 @@ export class StorageManager {
     return updatedContext;
   }
 
-  /**
-   * Set current project context
-   */
-  async setCurrentProject(project: Project): Promise<void> {
-    const context = await this.loadContext();
-    
-    // Update recent projects list
-    const recentProjects = [project, ...context.recentProjects.filter(p => p.id !== project.id)].slice(0, 5);
-    
-    await this.updateContext({
-      currentProject: project,
-      recentProjects,
-      currentTree: undefined, // Reset tree when switching projects
-      currentNode: undefined
-    });
-  }
 
   /**
    * Set current tree context
