@@ -1,7 +1,6 @@
 import { 
   Tree, 
   TreeCreationOptions, 
-  TreeStats,
   ImageNode,
   TreeWithNodes,
   TreeNode 
@@ -30,26 +29,11 @@ export class TreeManager {
       projectId: options.projectId,
       name: options.name,
       description: options.description,
-      createdAt: now,
-      lastAccessed: now,
-      purpose: options.purpose,
-      metadata: {
-        totalNodes: 0,
-        depth: 0,
-        totalSize: 0,
-        branchCount: 0,
-        leafCount: 0
-      },
       tags: options.tags || [],
       favorite: false,
       archived: false,
-      stats: {
-        totalGenerations: 0,
-        totalImports: 0,
-        lastActivity: now,
-        avgRating: 0,
-        mostUsedPrompts: []
-      }
+      createdAt: now,
+      lastAccessed: now
     };
 
     await this.storage.saveTree(tree);
@@ -105,103 +89,28 @@ export class TreeManager {
     ]);
 
     const treeNodes = allNodes.filter(node => node.treeId === treeId);
+    const nodeMap = new Map<string, ImageNode>();
+    treeNodes.forEach(node => nodeMap.set(node.id, node));
+    
     const visualTree = this.buildVisualTree(treeNodes);
     const rootNode = treeNodes.find(node => !node.parentId);
 
     return {
       tree,
-      rootNode,
-      totalNodes: treeNodes.length,
+      rootNodeId: rootNode?.id,
+      nodeMap,
       visualTree
     };
   }
 
-  /**
-   * Get tree statistics
-   */
-  async getTreeStatistics(treeId: string): Promise<TreeStats> {
-    return await this.storage.getTreeStats(treeId);
-  }
 
   /**
-   * Refresh tree metadata based on current nodes
+   * Refresh tree last accessed time
    */
-  async refreshTreeMetadata(treeId: string): Promise<Tree> {
-    const [tree, allNodes] = await Promise.all([
-      this.storage.loadTree(treeId),
-      this.storage.loadAllNodes()
-    ]);
-
-    const treeNodes = allNodes.filter(node => node.treeId === treeId);
-    
-    if (treeNodes.length === 0) {
-      return tree;
-    }
-
-    // Calculate tree structure metrics dynamically
-    const calculateDepth = (nodeId: string, visited = new Set()): number => {
-      if (visited.has(nodeId)) return 0; // Avoid infinite loops
-      visited.add(nodeId);
-      
-      const node = treeNodes.find(n => n.id === nodeId);
-      if (!node || !node.parentId) return 0;
-      
-      return 1 + calculateDepth(node.parentId, visited);
-    };
-    
-    const depths = treeNodes.map(node => calculateDepth(node.id));
-    const maxDepth = Math.max(...depths, 0);
-    
-    const rootNodes = treeNodes.filter(node => !node.parentId);
-    const leafNodes = treeNodes.filter(node => 
-      !treeNodes.some(child => child.parentId === node.id)
-    );
-
-    const totalSize = treeNodes.reduce((sum, node) => sum + node.fileInfo.fileSize, 0);
-    
-    // Calculate average rating
-    const ratedNodes = treeNodes.filter(node => node.userSettings.rating);
-    const avgRating = ratedNodes.length > 0 
-      ? ratedNodes.reduce((sum, node) => sum + (node.userSettings.rating || 0), 0) / ratedNodes.length
-      : 0;
-
-    // Get most used prompts
-    const prompts = treeNodes
-      .filter(node => this.getNodePrompt(node))
-      .map(node => this.getNodePrompt(node));
-    
-    const promptCounts: Record<string, number> = {};
-    prompts.forEach(prompt => {
-      promptCounts[prompt] = (promptCounts[prompt] || 0) + 1;
+  async refreshTreeAccess(treeId: string): Promise<Tree> {
+    return await this.storage.updateTree(treeId, {
+      lastAccessed: new Date()
     });
-    
-    const mostUsedPrompts = Object.entries(promptCounts)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 5)
-      .map(([prompt]) => prompt);
-
-    // Count generations vs imports
-    const generationCount = treeNodes.filter(node => !!node.model).length;
-    const importCount = treeNodes.filter(node => !node.model).length;
-
-    const updates: Partial<Tree> = {
-      metadata: {
-        totalNodes: treeNodes.length,
-        depth: maxDepth,
-        totalSize,
-        branchCount: rootNodes.length,
-        leafCount: leafNodes.length
-      },
-      stats: {
-        totalGenerations: generationCount,
-        totalImports: importCount,
-        lastActivity: new Date(),
-        avgRating,
-        mostUsedPrompts
-      }
-    };
-
-    return await this.storage.updateTree(treeId, updates);
   }
 
   /**
@@ -367,7 +276,7 @@ export class TreeManager {
       if (!node.parentId) {
         // Root node
         roots.push({
-          node,
+          nodeId: node.id,
           children: this.getChildren(node.id, nodeMap),
           depth: 0
         });
@@ -386,16 +295,19 @@ export class TreeManager {
     nodeMap.forEach(node => {
       if (node.parentId === nodeId) {
         children.push({
-          node,
+          nodeId: node.id,
           children: this.getChildren(node.id, nodeMap, depth + 1),
           depth: depth + 1
         });
       }
     });
 
-    return children.sort((a, b) => 
-      new Date(a.node.createdAt).getTime() - new Date(b.node.createdAt).getTime()
-    );
+    return children.sort((a, b) => {
+      const nodeA = nodeMap.get(a.nodeId);
+      const nodeB = nodeMap.get(b.nodeId);
+      if (!nodeA || !nodeB) return 0;
+      return new Date(nodeA.createdAt).getTime() - new Date(nodeB.createdAt).getTime();
+    });
   }
 
   /**
@@ -426,11 +338,7 @@ export class TreeManager {
         }
       });
 
-      // Check tree metadata consistency
-      const actualNodeCount = treeNodes.length;
-      if (tree.metadata.totalNodes !== actualNodeCount) {
-        issues.push(`Tree metadata shows ${tree.metadata.totalNodes} nodes but found ${actualNodeCount}`);
-      }
+      // Tree validation complete - no metadata to check in simplified structure
 
     } catch (error) {
       issues.push(`Tree validation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

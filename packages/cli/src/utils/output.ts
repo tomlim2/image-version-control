@@ -100,7 +100,7 @@ export function formatNodeInfo(node: ImageNode): string[] {
 /**
  * Display tree structure
  */
-export function displayTree(roots: TreeNode[], currentNodeId?: string): void {
+export function displayTree(roots: TreeNode[], nodeMap: Map<string, ImageNode>, currentNodeId?: string): void {
   if (roots.length === 0) {
     console.log(chalk.gray('📭 No images yet!'));
     console.log(chalk.yellow('💡 Generate your first image with:'), chalk.cyan('pixtree generate "your prompt"'));
@@ -111,7 +111,7 @@ export function displayTree(roots: TreeNode[], currentNodeId?: string): void {
   console.log('');
   
   roots.forEach((root, index) => {
-    displayTreeNode(root, '', index === roots.length - 1, currentNodeId);
+    displayTreeNode(root, nodeMap, '', index === roots.length - 1, currentNodeId);
   });
 }
 
@@ -120,11 +120,15 @@ export function displayTree(roots: TreeNode[], currentNodeId?: string): void {
  */
 function displayTreeNode(
   treeNode: TreeNode, 
+  nodeMap: Map<string, ImageNode>,
   prefix: string, 
   isLast: boolean, 
   currentNodeId?: string
 ): void {
-  const { node, children } = treeNode;
+  const { nodeId, children } = treeNode;
+  const node = nodeMap.get(nodeId);
+  
+  if (!node) return; // Skip if node not found
   
   // Node prefix
   const nodePrefix = prefix + (isLast ? '└── ' : '├── ');
@@ -165,7 +169,7 @@ function displayTreeNode(
   // Display children
   const childPrefix = prefix + (isLast ? '    ' : '│   ');
   children.forEach((child, index) => {
-    displayTreeNode(child, childPrefix, index === children.length - 1, currentNodeId);
+    displayTreeNode(child, nodeMap, childPrefix, index === children.length - 1, currentNodeId);
   });
 }
 

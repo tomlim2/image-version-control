@@ -1,7 +1,3 @@
-/**
- * Tree-related types for Pixtree
- */
-
 import type { ImageNode } from './ImageNode.js';
 
 export interface Tree {
@@ -9,69 +5,37 @@ export interface Tree {
   projectId: string;
   name: string;
   description?: string;
-  createdAt: Date;
-  lastAccessed: Date;
-  
-  // Tree purpose (user-defined)
-  purpose?: string;
-  
-  // Tree metadata
-  metadata: {
-    totalNodes: number;
-    depth: number; // max depth of tree
-    totalSize: number; // bytes
-    branchCount: number; // number of direct children from root
-    leafCount: number; // number of nodes with no children
-  };
-  
-  // Root node reference
-  rootNodeId?: string; // first node in this tree
-  
-  // Tree-level tags and organization
   tags: string[];
   favorite: boolean;
   archived: boolean;
-  
-  // Access tracking
-  stats: {
-    totalGenerations: number;
-    totalImports: number;
-    lastActivity: Date;
-    avgRating: number;
-    mostUsedPrompts: string[];
-  };
+  createdAt: Date;
+  lastAccessed: Date;
 }
 
 export interface TreeNode {
-  node: ImageNode;
+  nodeId: string;
   children: TreeNode[];
   depth: number;
 }
 
 export interface TreeWithNodes {
   tree: Tree;
-  rootNode?: ImageNode;
-  totalNodes: number;
+  rootNodeId?: string;
+  nodeMap: Map<string, ImageNode>;
   visualTree: TreeNode[];
 }
 
-export interface TreeStats {
-  totalNodes: number;
-  totalSize: number;
+export interface PartialTreeNode {
+  nodeId: string;
+  hasChildren: boolean;
+  childrenLoaded: boolean;
+  children?: TreeNode[];
   depth: number;
-  branchFactor: number; // average children per node
-  generationCount: number;
-  importCount: number;
-  averageRating: number;
-  tagUsage: Record<string, number>;
-  modelUsage: Record<string, number>;
-  activityTimeline: { date: string; count: number }[];
 }
 
 export interface TreeCreationOptions {
   name: string;
   description?: string;
-  purpose?: string;
   tags?: string[];
   projectId: string;
 }

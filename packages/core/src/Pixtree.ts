@@ -19,8 +19,7 @@ import {
   BlendPreview,
   WorkspaceContext,
   StatusInfo,
-  ProjectStats,
-  TreeStats
+  ProjectStats
 } from './types/index.js';
 import fs from 'fs-extra';
 import path from 'path';
@@ -207,7 +206,7 @@ export class Pixtree {
       await this.storage.setCurrentNode(nodeId);
       
       // Update tree metadata
-      await this.treeManager.refreshTreeMetadata(targetTreeId);
+      await this.treeManager.refreshTreeAccess(targetTreeId);
       
       return node;
       
@@ -280,7 +279,7 @@ export class Pixtree {
     await this.storage.setCurrentNode(nodeId);
     
     // Update tree metadata
-    await this.treeManager.refreshTreeMetadata(targetTreeId);
+    await this.treeManager.refreshTreeAccess(targetTreeId);
     
     return node;
   }
@@ -504,7 +503,7 @@ export class Pixtree {
       if (!node.parentId) {
         // Root node
         roots.push({
-          node,
+          nodeId: node.id,
           children: this.getChildren(node.id, nodeMap),
           depth: 0
         });
@@ -520,16 +519,19 @@ export class Pixtree {
     nodeMap.forEach(node => {
       if (node.parentId === nodeId) {
         children.push({
-          node,
+          nodeId: node.id,
           children: this.getChildren(node.id, nodeMap, depth + 1),
           depth: depth + 1
         });
       }
     });
     
-    return children.sort((a, b) => 
-      new Date(a.node.createdAt).getTime() - new Date(b.node.createdAt).getTime()
-    );
+    return children.sort((a, b) => {
+      const nodeA = nodeMap.get(a.nodeId);
+      const nodeB = nodeMap.get(b.nodeId);
+      if (!nodeA || !nodeB) return 0;
+      return new Date(nodeA.createdAt).getTime() - new Date(nodeB.createdAt).getTime();
+    });
   }
   
   private async getImageDimensions(imageData: Buffer): Promise<{ width: number; height: number }> {
@@ -699,12 +701,6 @@ export class Pixtree {
     return await this.projectManager.getProjectStatistics();
   }
 
-  /**
-   * Get tree-specific statistics
-   */
-  async getTreeStats(treeId: string): Promise<TreeStats> {
-    return await this.treeManager.getTreeStatistics(treeId);
-  }
 
   /**
    * Enhanced import with tree context and smart tree assignment

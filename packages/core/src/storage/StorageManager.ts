@@ -8,7 +8,6 @@ import {
   Tree, 
   WorkspaceContext,
   ProjectStats,
-  TreeStats,
   SearchOptions,
   ProjectSearchOptions
 } from '../types/index.js';
@@ -632,114 +631,6 @@ export class StorageManager {
     };
   }
 
-  /**
-   * Get tree-specific statistics
-   */
-  async getTreeStats(treeId: string): Promise<TreeStats> {
-    const [tree, allNodes] = await Promise.all([
-      this.loadTree(treeId),
-      this.loadAllNodes()
-    ]);
-    
-    const treeNodes = allNodes.filter(node => node.treeId === treeId);
-    
-    if (treeNodes.length === 0) {
-      return {
-        totalNodes: 0,
-        totalSize: 0,
-        depth: 0,
-        branchFactor: 0,
-        generationCount: 0,
-        importCount: 0,
-        averageRating: 0,
-        tagUsage: {},
-        modelUsage: {},
-        activityTimeline: []
-      };
-    }
-    
-    const tagUsage: Record<string, number> = {};
-    const modelUsage: Record<string, number> = {};
-    const activityByDate: Record<string, number> = {};
-    
-    let totalRating = 0;
-    let ratedCount = 0;
-    let generationCount = 0;
-    let importCount = 0;
-    let totalSize = 0;
-    let maxDepth = 0;
-    let totalChildren = 0;
-    
-    treeNodes.forEach(node => {
-      // Basic counts
-      if (node.model) generationCount++;
-      if (!node.model) importCount++;
-      
-      // Size calculation
-      totalSize += node.fileInfo.fileSize;
-      
-      // Rating stats
-      if (node.userSettings.rating) {
-        totalRating += node.userSettings.rating;
-        ratedCount++;
-      }
-      
-      // Tag usage
-      node.tags.forEach(tag => {
-        tagUsage[tag] = (tagUsage[tag] || 0) + 1;
-      });
-      
-      // Model usage
-      if (node.model) {
-        modelUsage[node.model] = (modelUsage[node.model] || 0) + 1;
-      }
-      
-      // Activity timeline
-      const dateKey = new Date(node.createdAt).toISOString().split('T')[0];
-      activityByDate[dateKey] = (activityByDate[dateKey] || 0) + 1;
-      
-      // Depth calculation (dynamic)
-      const calculateDepth = (nodeId: string, visited = new Set()): number => {
-        if (visited.has(nodeId)) return 0;
-        visited.add(nodeId);
-        
-        const currentNode = treeNodes.find(n => n.id === nodeId);
-        if (!currentNode || !currentNode.parentId) return 0;
-        
-        return 1 + calculateDepth(currentNode.parentId, visited);
-      };
-      
-      const depth = calculateDepth(node.id);
-      maxDepth = Math.max(maxDepth, depth);
-      
-      // Children count for branch factor
-      const childrenCount = treeNodes.filter(n => n.parentId === node.id).length;
-      if (childrenCount > 0) {
-        totalChildren += childrenCount;
-      }
-    });
-    
-    const nodesWithChildren = treeNodes.filter(node => 
-      treeNodes.some(n => n.parentId === node.id)
-    ).length;
-    
-    const activityTimeline = Object.entries(activityByDate)
-      .map(([date, count]) => ({ date, count }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-    
-    return {
-      totalNodes: treeNodes.length,
-      totalSize,
-      depth: maxDepth,
-      branchFactor: nodesWithChildren > 0 ? totalChildren / nodesWithChildren : 0,
-      generationCount,
-      importCount,
-      averageRating: ratedCount > 0 ? totalRating / ratedCount : 0,
-      tagUsage,
-      modelUsage,
-      activityTimeline
-    };
-  }
 
   /**
    * Calculate total storage size

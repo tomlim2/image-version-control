@@ -79,10 +79,8 @@ export const treeCommand = new Command('tree')
         console.log(`  ${isCurrent ? '→' : ' '} ${chalk.bold(tree.name)} ${isCurrent ? chalk.gray('(current)') : ''}`);
         console.log(`    ${chalk.gray(tree.description || 'No description')}`);
         
-        // Show basic tree stats
-        if (tree.metadata) {
-          console.log(`    ${chalk.gray('Nodes:')} ${tree.metadata.totalNodes} | ${chalk.gray('Size:')} ${(tree.metadata.totalSize / 1024 / 1024).toFixed(1)}MB`);
-        }
+        // Show basic tree stats (calculated dynamically)
+        console.log(`    ${chalk.gray('Created:')} ${new Date(tree.createdAt).toLocaleDateString()}`);
       }
       
       // Show current context
@@ -121,14 +119,14 @@ export const treeCommand = new Command('tree')
 /**
  * Filter tree nodes to only include nodes with specified IDs and their ancestors/descendants
  */
-function filterTreeNodes(roots: any[], targetIds: string[]): any[] {
+function filterTreeNodes(roots: any[], targetIds: string[], nodeMap: Map<string, any>): any[] {
   if (targetIds.length === 0) return [];
   
   const targetSet = new Set(targetIds);
   
   function shouldIncludeNode(node: any): boolean {
     // Include if this node is a target
-    if (targetSet.has(node.node.id)) return true;
+    if (targetSet.has(node.nodeId)) return true;
     
     // Include if any descendant is a target
     return node.children.some((child: any) => shouldIncludeNode(child));
