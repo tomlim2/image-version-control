@@ -6,7 +6,6 @@ import { NanoBananaProvider } from './ai/NanoBananaProvider.js';
 import {
   ImageNode,
   NanoBananaGenerationConfig,
-  ProjectConfig,
   Project,
   Tree,
   TreeNode,
@@ -18,8 +17,7 @@ import {
   MergeStrategy,
   BlendPreview,
   WorkspaceContext,
-  StatusInfo,
-  ProjectStats
+  StatusInfo
 } from './types/index.js';
 import fs from 'fs-extra';
 import path from 'path';
@@ -57,7 +55,6 @@ export class Pixtree {
     const project = await this.projectManager.createProject({
       name: options.name,
       description: options.description,
-      defaultModel: options.defaultModel || 'nano-banana',
       initialTree: options.initialTree || {
         name: 'Main',
         description: 'Default tree for new images',
@@ -65,70 +62,24 @@ export class Pixtree {
       }
     });
     
-    // Create legacy config for backward compatibility
-    const defaultConfig: ProjectConfig = {
-      name: project.name,
-      version: '2.0.0',
-      projectId: project.id,
-      currentTreeId: project.settings.defaultTreeOnImport,
-      aiProviders: {
-        'nano-banana': {
-          enabled: true,
-          apiKey: options.apiKey || '',
-          defaultConfig: {
-            temperature: 1.0,
-            model: 'gemini-2.5-flash-image-preview'
-          }
-        }
-      },
-      storage: {
-      },
-      preferences: {
-        defaultModel: project.settings.defaultModel
-      },
-      projectMetadata: {
-        createdAt: project.createdAt
-      }
-    };
-    
-    await this.storage.saveConfig(defaultConfig);
-    
     return project;
   }
 
-  /**
-   * Legacy init method for backward compatibility
-   */
-  async initLegacy(config: Partial<ProjectConfig>): Promise<void> {
-    const projectOptions: ProjectCreationOptions = {
-      name: config.name || 'Untitled Project',
-      description: 'Legacy project initialization',
-      defaultModel: config.preferences?.defaultModel || 'nano-banana'
-    };
-    
-    await this.init({
-      ...projectOptions,
-      apiKey: config.aiProviders?.['nano-banana']?.apiKey
-    });
-  }
   
   /**
    * Generate a new image with Project/Tree context
    */
   async generate(prompt: string, options: GenerateOptions = { model: 'nano-banana' }): Promise<ImageNode> {
-    const [config, context, project] = await Promise.all([
-      this.storage.loadConfig(),
+    const [context, project] = await Promise.all([
       this.storage.loadContext(),
       this.projectManager.getProject()
     ]);
     
     // Determine target tree
-    let targetTreeId = options.treeId;
+    let targetTreeId: string = options.treeId || '';
     if (!targetTreeId) {
       if (context.currentTree) {
         targetTreeId = context.currentTree.id;
-      } else if (project.settings.defaultTreeOnImport) {
-        targetTreeId = project.settings.defaultTreeOnImport;
       } else if (options.autoCreateTree) {
         // Create a new tree
         const newTree = await this.treeManager.createTree({
@@ -139,12 +90,18 @@ export class Pixtree {
         });
         targetTreeId = newTree.id;
       } else {
-        throw new Error('No target tree specified. Use --tree option or create a tree first.');
+        // Use first available tree as fallback
+        const trees = await this.getTrees();
+        if (trees.length > 0) {
+          targetTreeId = trees[0].id;
+        } else {
+          throw new Error('No target tree specified. Use --tree option or create a tree first.');
+        }
       }
     }
     
     // Get or create AI provider
-    const provider = this.getOrCreateProvider(options.model, config);
+    const provider = this.getOrCreateProvider(options.model);
     
     // Get current node for parent relationship
     const currentNode = await this.storage.getCurrentNode();
@@ -347,8 +304,7 @@ export class Pixtree {
       throw new Error('Both nodes must have generation prompts to blend');
     }
     
-    const config = await this.storage.loadConfig();
-    const provider = this.getOrCreateProvider(node1.model || 'nano-banana', config);
+    const provider = this.getOrCreateProvider(node1.model || 'nano-banana');
     
     if (!provider.blendPrompts) {
       // Fallback simple blending
@@ -476,16 +432,21 @@ export class Pixtree {
   
   // Private helper methods
   
-  private getOrCreateProvider(modelName: string, config: ProjectConfig): AIProvider {
+  private getOrCreateProvider(modelName: string): AIProvider {
     let provider = this.aiRegistry.getProvider(modelName);
     
     if (!provider) {
-      const providerConfig = config.aiProviders[modelName];
-      if (!providerConfig || !providerConfig.enabled) {
-        throw new Error(`AI provider '${modelName}' not configured or not enabled`);
-      }
+      // Create default provider configuration
+      const defaultConfig = {
+        enabled: true,
+        apiKey: process.env.GOOGLE_AI_API_KEY || '',
+        defaultConfig: {
+          temperature: 1.0,
+          model: 'gemini-2.5-flash-image-preview'
+        }
+      };
       
-      provider = this.aiRegistry.createProvider(modelName, providerConfig);
+      provider = this.aiRegistry.createProvider(modelName, defaultConfig);
     }
     
     return provider;
@@ -678,11 +639,17 @@ export class Pixtree {
       this.projectManager.getProject()
     ]);
 
+    // Calculate project stats dynamically
+    const [allNodes, allTrees] = await Promise.all([
+      this.storage.loadAllNodes(),
+      this.storage.loadAllTrees()
+    ]);
+
     const projectStats = {
-      totalImages: project.metadata.totalImages,
-      totalTrees: project.metadata.totalTrees,
-      storageUsed: project.metadata.totalSize,
-      lastActivity: project.stats.lastActivity
+      totalImages: allNodes.length,
+      totalTrees: allTrees.length,
+      storageUsed: allNodes.reduce((sum, node) => sum + node.fileInfo.fileSize, 0),
+      lastActivity: new Date()
     };
 
     const suggestedActions = await this.projectManager.getSuggestedActions();
@@ -694,12 +661,6 @@ export class Pixtree {
     };
   }
 
-  /**
-   * Get comprehensive project statistics
-   */
-  async getProjectStats(): Promise<ProjectStats> {
-    return await this.projectManager.getProjectStatistics();
-  }
 
 
   /**
@@ -717,18 +678,21 @@ export class Pixtree {
       if (context.currentTree && context.currentTree.tags.includes('reference')) {
         // If current tree is reference type, use it
         targetTreeId = context.currentTree.id;
-      } else if (project.settings.defaultTreeOnImport) {
-        // Use default tree
-        targetTreeId = project.settings.defaultTreeOnImport;
       } else {
-        // Create a new reference tree for imports
-        const referenceTree = await this.treeManager.createTree({
-          name: options.treeName || 'Imported References',
-          description: 'Auto-created tree for imported images',
-          projectId: project.id,
-          tags: options.tags || ['imported', 'reference']
-        });
-        targetTreeId = referenceTree.id;
+        // Use first available tree or create new tree for imports
+        const trees = await this.getTrees();
+        if (trees.length > 0) {
+          targetTreeId = trees[0].id;
+        } else {
+          // Create a new reference tree for imports
+          const referenceTree = await this.treeManager.createTree({
+            name: options.treeName || 'Imported References',
+            description: 'Auto-created tree for imported images',
+            projectId: project.id,
+            tags: options.tags || ['imported', 'reference']
+          });
+          targetTreeId = referenceTree.id;
+        }
       }
     }
 
@@ -834,11 +798,11 @@ export class Pixtree {
     }
     
     // 4. Look for existing trees that match the import purpose
-    const allTrees = await this.treeManager.getAllTrees();
+    const availableTrees = await this.treeManager.getAllTrees();
     
     // Try to find a reference tree for reference materials
     if (pathClues.isReference) {
-      const referenceTrees = allTrees.filter(tree => 
+      const referenceTrees = availableTrees.filter(tree => 
         tree.tags.includes('reference') && !tree.archived
       );
       
@@ -851,14 +815,9 @@ export class Pixtree {
       }
     }
     
-    // 5. Check project default tree for imports
-    if (project.settings.defaultTreeOnImport) {
-      try {
-        await this.treeManager.getTree(project.settings.defaultTreeOnImport);
-        return project.settings.defaultTreeOnImport;
-      } catch {
-        // Default tree no longer exists, continue to auto-creation
-      }
+    // 5. Use first available tree as fallback
+    if (availableTrees.length > 0) {
+      return availableTrees[0].id;
     }
     
     // 6. Auto-create appropriate tree based on analysis
@@ -872,14 +831,7 @@ export class Pixtree {
     });
     
     // Update project default if this is the first tree
-    if (allTrees.length === 0) {
-      await this.projectManager.updateProject({
-        settings: {
-          ...project.settings,
-          defaultTreeOnImport: newTree.id
-        }
-      });
-    }
+    // Tree created successfully - no need to update project settings in simplified structure
     
     return newTree.id;
   }

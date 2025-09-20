@@ -3,11 +3,10 @@ import path from 'path';
 import crypto from 'crypto';
 import { 
   ImageNode, 
-  ProjectConfig, 
+ 
   Project, 
   Tree, 
   WorkspaceContext,
-  ProjectStats,
   SearchOptions,
   ProjectSearchOptions
 } from '../types/index.js';
@@ -18,7 +17,6 @@ export class StorageManager {
   private imagesPath: string;
   private nodesPath: string;
   private treesPath: string;
-  private configPath: string;
   private projectConfigPath: string;
   private contextPath: string;
   
@@ -28,7 +26,6 @@ export class StorageManager {
     this.imagesPath = path.join(this.pixtreePath, 'images');
     this.nodesPath = path.join(this.pixtreePath, 'nodes');
     this.treesPath = path.join(this.pixtreePath, 'trees');
-    this.configPath = path.join(this.pixtreePath, 'config.json');
     this.projectConfigPath = path.join(this.pixtreePath, 'project.json');
     this.contextPath = path.join(this.pixtreePath, 'context.json');
   }
@@ -53,31 +50,6 @@ export class StorageManager {
     await this.saveContext(initialContext);
   }
   
-  /**
-   * Save project configuration
-   */
-  async saveConfig(config: ProjectConfig): Promise<void> {
-    await fs.writeJSON(this.configPath, config, { spaces: 2 });
-  }
-  
-  /**
-   * Load project configuration
-   */
-  async loadConfig(): Promise<ProjectConfig> {
-    if (!(await fs.pathExists(this.configPath))) {
-      throw new Error('Project not initialized. Run "pixtree init" first.');
-    }
-    return await fs.readJSON(this.configPath);
-  }
-  
-  /**
-   * Update specific config values
-   */
-  async updateConfig(updates: Partial<ProjectConfig>): Promise<void> {
-    const config = await this.loadConfig();
-    const updatedConfig = { ...config, ...updates };
-    await this.saveConfig(updatedConfig);
-  }
 
   // ===== PROJECT MANAGEMENT =====
 
@@ -341,9 +313,6 @@ export class StorageManager {
     await this.updateContext({
       currentNode: node
     });
-    
-    // Also update legacy config for backward compatibility
-    await this.updateConfig({ currentNodeId: nodeId });
   }
   
   /**
@@ -351,20 +320,7 @@ export class StorageManager {
    */
   async getCurrentNode(): Promise<ImageNode | null> {
     const context = await this.loadContext();
-    if (context.currentNode) {
-      return context.currentNode;
-    }
-    
-    // Fallback to legacy config
-    const config = await this.loadConfig();
-    if (!config.currentNodeId) {
-      return null;
-    }
-    try {
-      return await this.loadNode(config.currentNodeId);
-    } catch {
-      return null;
-    }
+    return context.currentNode || null;
   }
   
   /**
@@ -550,86 +506,6 @@ export class StorageManager {
     });
   }
 
-  /**
-   * Get comprehensive project statistics
-   */
-  async getProjectStats(): Promise<ProjectStats> {
-    const [nodes, trees] = await Promise.all([
-      this.loadAllNodes(),
-      this.loadAllTrees()
-    ]);
-    
-    const imagesByRating: Record<string, number> = {};
-    const imagesByModel: Record<string, number> = {};
-    const imagesByTree: Record<string, number> = {};
-    const tagUsage: Record<string, number> = {};
-    const activityByDate: Record<string, number> = {};
-    
-    let totalGenerationTime = 0;
-    let generationCount = 0;
-    let favoriteCount = 0;
-    let totalRating = 0;
-    let ratedCount = 0;
-    
-    nodes.forEach(node => {
-      // Rating stats
-      const rating = node.userSettings.rating || 0;
-      const ratingKey = rating.toString();
-      imagesByRating[ratingKey] = (imagesByRating[ratingKey] || 0) + 1;
-      
-      if (rating > 0) {
-        totalRating += rating;
-        ratedCount++;
-      }
-      
-      // Model stats
-      if (node.model) {
-        imagesByModel[node.model] = (imagesByModel[node.model] || 0) + 1;
-      }
-      
-      // Tree stats
-      imagesByTree[node.treeId] = (imagesByTree[node.treeId] || 0) + 1;
-      
-      // Tag stats
-      node.tags.forEach(tag => {
-        tagUsage[tag] = (tagUsage[tag] || 0) + 1;
-      });
-      
-      // Activity stats
-      const dateKey = new Date(node.createdAt).toISOString().split('T')[0];
-      activityByDate[dateKey] = (activityByDate[dateKey] || 0) + 1;
-      
-      // Generation time stats
-      if (node.fileInfo.generationTime) {
-        totalGenerationTime += node.fileInfo.generationTime;
-        generationCount++;
-      }
-      
-      // Favorite count
-      if (node.userSettings.favorite) {
-        favoriteCount++;
-      }
-    });
-    
-    // Find most active tree
-    const mostActiveTree = Object.entries(imagesByTree)
-      .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
-    
-    return {
-      totalImages: nodes.length,
-      totalNodes: nodes.length,
-      totalTrees: trees.length,
-      totalSize: await this.calculateTotalSize(),
-      imagesByRating,
-      imagesByModel,
-      imagesByTree,
-      tagUsage,
-      activityByDate,
-      averageGenerationTime: generationCount > 0 ? totalGenerationTime / generationCount : 0,
-      mostActiveTree,
-      favoriteCount
-    };
-  }
 
 
   /**
@@ -656,7 +532,7 @@ export class StorageManager {
    * Check if project is initialized
    */
   async isInitialized(): Promise<boolean> {
-    return await fs.pathExists(this.configPath);
+    return await fs.pathExists(this.projectConfigPath);
   }
   
   /**

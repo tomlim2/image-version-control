@@ -19,8 +19,7 @@ export const initCommand = new Command('init')
       
       // Initialize project with minimal settings
       await pixtree.init({
-        name: projectName,
-        defaultModel: 'nano-banana'
+        name: projectName
       });
       
       // Success message
