@@ -181,8 +181,8 @@ export class TreeManager {
       .map(([prompt]) => prompt);
 
     // Count generations vs imports
-    const generationCount = treeNodes.filter(node => node.source === 'generated').length;
-    const importCount = treeNodes.filter(node => node.source === 'imported').length;
+    const generationCount = treeNodes.filter(node => !!node.model).length;
+    const importCount = treeNodes.filter(node => !node.model).length;
 
     const updates: Partial<Tree> = {
       metadata: {

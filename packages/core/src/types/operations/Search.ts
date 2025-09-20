@@ -6,7 +6,7 @@ export interface SearchOptions {
   text?: string; // search in prompts, descriptions, notes
   tags?: string[]; // must have all these tags
   rating?: number; // minimum rating
-  source?: 'generated' | 'imported';
+  source?: 'generated' | 'imported'; // backward compatibility - internally uses model existence
   model?: string;
   treeId?: string;
   favorite?: boolean;

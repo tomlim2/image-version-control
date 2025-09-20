@@ -56,7 +56,7 @@ export function formatNodeInfo(node: ImageNode): string[] {
   // Basic info
   lines.push(`📋 ${chalk.cyan('Node:')} ${node.id}`);
   
-  if (node.source === 'generated') {
+  if (node.model) {
     lines.push(`🎨 ${chalk.yellow('Prompt:')} "${truncateText(getNodePrompt(node) || '', 60)}"`);
     lines.push(`🤖 ${chalk.blue('Model:')} ${node.model}`);
     if (node.fileInfo.generationTime) {
@@ -129,12 +129,12 @@ function displayTreeNode(
   // Node prefix
   const nodePrefix = prefix + (isLast ? '└── ' : '├── ');
   
-  // Node icon based on source
-  const icon = node.source === 'generated' ? '🖼️ ' : '📸 ';
+  // Node icon based on whether it's generated (has model) or imported
+  const icon = node.model ? '🖼️ ' : '📸 ';
   
   // Node display text
   let nodeText = '';
-  if (node.source === 'generated') {
+  if (node.model) {
     nodeText = `"${truncateText(getNodePrompt(node) || 'Unknown', 40)}"`;
   } else {
     nodeText = node.importInfo?.originalFilename || 'Imported';
@@ -218,10 +218,10 @@ export function displaySearchResults(nodes: ImageNode[], query: any): void {
   
   nodes.forEach((node, index) => {
     const prefix = index === nodes.length - 1 ? '└── ' : '├── ';
-    const icon = node.source === 'generated' ? '🖼️ ' : '📸 ';
+    const icon = node.model ? '🖼️ ' : '📸 ';
     
     let text = '';
-    if (node.source === 'generated') {
+    if (node.model) {
       text = `"${truncateText(getNodePrompt(node) || '', 50)}"`;
     } else {
       text = node.importInfo?.originalFilename || 'Imported';

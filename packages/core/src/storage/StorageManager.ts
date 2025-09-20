@@ -324,7 +324,7 @@ export class StorageManager {
     );
     
     // Delete image if not referenced
-    if (!isImageReferenced && node.source === 'generated') {
+    if (!isImageReferenced && node.model) {
       const imagePath = path.join(this.projectPath, node.imagePath);
       if (await fs.pathExists(imagePath)) {
         await fs.remove(imagePath);
@@ -514,8 +514,8 @@ export class StorageManager {
         return false;
       }
       
-      // Source filter
-      if (options.source && node.source !== options.source) {
+      // Source filter (backward compatibility - uses model existence)
+      if (options.source && ((options.source === 'generated' && !node.model) || (options.source === 'imported' && node.model))) {
         return false;
       }
       
@@ -672,8 +672,8 @@ export class StorageManager {
     
     treeNodes.forEach(node => {
       // Basic counts
-      if (node.source === 'generated') generationCount++;
-      if (node.source === 'imported') importCount++;
+      if (node.model) generationCount++;
+      if (!node.model) importCount++;
       
       // Size calculation
       totalSize += node.fileInfo.fileSize;

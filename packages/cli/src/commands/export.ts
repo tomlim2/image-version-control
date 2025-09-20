@@ -113,8 +113,8 @@ export const exportCommand = new Command('export')
       // Show export info
       showSuccess([
         `📁 ${chalk.gray('Exported to:')} ${finalOutputPath}`,
-        `🖼️  ${chalk.gray('Source:')} ${node.source === 'generated' ? 'Generated' : 'Imported'}`,
-        node.source === 'generated' 
+        `🖼️  ${chalk.gray('Source:')} ${node.model ? 'Generated' : 'Imported'}`,
+        node.model 
           ? `🎨 ${chalk.gray('Prompt:')} "${getNodePrompt(node)}"`
           : `📸 ${chalk.gray('Original:')} ${node.importInfo?.originalFilename}`,
         `📊 ${chalk.gray('Format:')} ${options.format.toUpperCase()}`,
@@ -148,7 +148,7 @@ export const exportCommand = new Command('export')
  * Generate a sensible filename from node data
  */
 function generateFilename(node: any): string {
-  if (node.source === 'generated' && getNodePrompt(node)) {
+  if (node.model && getNodePrompt(node)) {
     // Use first few words of prompt
     const promptWords = getNodePrompt(node)
       .toLowerCase()

@@ -172,7 +172,6 @@ export class Pixtree {
         parentId,
         imagePath,
         imageHash,
-        source: 'generated',
         model: options.model,
         modelConfig: {
           prompt,
@@ -185,7 +184,6 @@ export class Pixtree {
           batchCount: options.batchCount ?? 1,          // Use provided or default
           referenceImages: options.referenceImages      // Optional reference images
         } as NanoBananaGenerationConfig,
-        derivedFrom: currentNode?.id,
         tags: options.tags || [],
         userSettings: {
           favorite: false,
@@ -257,7 +255,8 @@ export class Pixtree {
       parentId,
       imagePath: savedPath,
       imageHash,
-      source: 'imported',
+      model: undefined, // imported images have no model
+      modelConfig: undefined, // imported images have no model config
       importInfo: {
         originalPath: imagePath,
         originalFilename: path.basename(imagePath)

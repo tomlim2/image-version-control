@@ -37,10 +37,8 @@ export interface ImageNode {
   imagePath: string;
   imageHash: string;
   tags: string[];
-  source: 'generated' | 'imported';
-  model?: string;
+  model?: string; // exists for generated images, undefined for imported images
   modelConfig?: NanoBananaGenerationConfig | SeedreamConfig;
-  derivedFrom?: string;
   importInfo?: {
     originalPath: string;
     originalFilename: string;
