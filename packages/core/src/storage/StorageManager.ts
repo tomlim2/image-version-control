@@ -405,7 +405,7 @@ export class StorageManager {
     
     const imagesByRating: Record<number, number> = {};
     nodes.forEach(node => {
-      const rating = node.userMetadata.rating || 0;
+      const rating = node.userSettings.rating || 0;
       imagesByRating[rating] = (imagesByRating[rating] || 0) + 1;
     });
     
@@ -443,9 +443,8 @@ export class StorageManager {
       if (query.text) {
         const searchText = query.text.toLowerCase();
         const searchFields = [
-          node.generationParams?.prompt || '',
-          node.userMetadata.description || '',
-          node.importInfo?.userDescription || '',
+          this.getNodePrompt(node),
+          node.userSettings.description || '',
           ...node.tags
         ].join(' ').toLowerCase();
         
@@ -453,10 +452,10 @@ export class StorageManager {
       }
       
       // Rating filters
-      if (query.rating !== undefined && node.userMetadata.rating !== query.rating) {
+      if (query.rating !== undefined && node.userSettings.rating !== query.rating) {
         return false;
       }
-      if (query.minRating !== undefined && (node.userMetadata.rating || 0) < query.minRating) {
+      if (query.minRating !== undefined && (node.userSettings.rating || 0) < query.minRating) {
         return false;
       }
       
@@ -494,9 +493,8 @@ export class StorageManager {
       if (options.text) {
         const searchText = options.text.toLowerCase();
         const searchFields = [
-          node.generationParams?.prompt || '',
-          node.userMetadata.description || '',
-          node.importInfo?.userDescription || '',
+          this.getNodePrompt(node),
+          node.userSettings.description || '',
           ...node.tags
         ].join(' ').toLowerCase();
         
@@ -512,7 +510,7 @@ export class StorageManager {
       }
       
       // Rating filters
-      if (options.rating !== undefined && (node.userMetadata.rating || 0) < options.rating) {
+      if (options.rating !== undefined && (node.userSettings.rating || 0) < options.rating) {
         return false;
       }
       
@@ -527,7 +525,7 @@ export class StorageManager {
       }
       
       // Favorite filter
-      if (options.favorite !== undefined && node.userMetadata.favorite !== options.favorite) {
+      if (options.favorite !== undefined && node.userSettings.favorite !== options.favorite) {
         return false;
       }
       
@@ -576,7 +574,7 @@ export class StorageManager {
     
     nodes.forEach(node => {
       // Rating stats
-      const rating = node.userMetadata.rating || 0;
+      const rating = node.userSettings.rating || 0;
       const ratingKey = rating.toString();
       imagesByRating[ratingKey] = (imagesByRating[ratingKey] || 0) + 1;
       
@@ -603,13 +601,13 @@ export class StorageManager {
       activityByDate[dateKey] = (activityByDate[dateKey] || 0) + 1;
       
       // Generation time stats
-      if (node.metadata.generationTime) {
-        totalGenerationTime += node.metadata.generationTime;
+      if (node.fileInfo.generationTime) {
+        totalGenerationTime += node.fileInfo.generationTime;
         generationCount++;
       }
       
       // Favorite count
-      if (node.userMetadata.favorite) {
+      if (node.userSettings.favorite) {
         favoriteCount++;
       }
     });
@@ -678,11 +676,11 @@ export class StorageManager {
       if (node.source === 'imported') importCount++;
       
       // Size calculation
-      totalSize += node.metadata.fileSize;
+      totalSize += node.fileInfo.fileSize;
       
       // Rating stats
-      if (node.userMetadata.rating) {
-        totalRating += node.userMetadata.rating;
+      if (node.userSettings.rating) {
+        totalRating += node.userSettings.rating;
         ratedCount++;
       }
       
@@ -700,10 +698,19 @@ export class StorageManager {
       const dateKey = new Date(node.createdAt).toISOString().split('T')[0];
       activityByDate[dateKey] = (activityByDate[dateKey] || 0) + 1;
       
-      // Depth calculation
-      if (node.treePosition) {
-        maxDepth = Math.max(maxDepth, node.treePosition.depth);
-      }
+      // Depth calculation (dynamic)
+      const calculateDepth = (nodeId: string, visited = new Set()): number => {
+        if (visited.has(nodeId)) return 0;
+        visited.add(nodeId);
+        
+        const currentNode = treeNodes.find(n => n.id === nodeId);
+        if (!currentNode || !currentNode.parentId) return 0;
+        
+        return 1 + calculateDepth(currentNode.parentId, visited);
+      };
+      
+      const depth = calculateDepth(node.id);
+      maxDepth = Math.max(maxDepth, depth);
       
       // Children count for branch factor
       const childrenCount = treeNodes.filter(n => n.parentId === node.id).length;
@@ -773,5 +780,19 @@ export class StorageManager {
    */
   getPixtreePath(): string {
     return this.pixtreePath;
+  }
+
+  /**
+   * Extract prompt from node's model configuration
+   */
+  private getNodePrompt(node: ImageNode): string {
+    if (!node.modelConfig) return '';
+    
+    // Both NanoBananaGenerationConfig and SeedreamConfig use 'prompt' field
+    if ('prompt' in node.modelConfig) {
+      return node.modelConfig.prompt || '';
+    }
+    
+    return '';
   }
 }

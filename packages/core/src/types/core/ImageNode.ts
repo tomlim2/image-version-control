@@ -1,6 +1,33 @@
-/**
- * ImageNode-related types for Pixtree
- */
+// Nano Banana (Gemini 2.5 Flash Image) generation configuration
+export interface NanoBananaGenerationConfig {
+  prompt: string;
+  
+  // Generation parameters (Gemini API standard)
+  temperature?: number;        // 0.0-1.0, controls creativity/randomness
+  topP?: number;              // Token selection probability threshold
+  topK?: number;              // Number of top tokens to consider
+  candidateCount?: number;    // Number of candidate responses to generate
+  maxOutputTokens?: number;   // Maximum output tokens
+  seed?: number;              // Seed for reproducible results
+  
+  // Image-specific parameters
+  aspectRatio?: string;       // Image aspect ratio
+  batchCount?: number;        // Images per batch (1-4)
+  
+  // Input data
+  mimeType?: string;
+  imageInput?: string;        // base64 encoded image
+  referenceImages?: string[]; // Up to 5 reference images
+}
+
+export interface SeedreamConfig {
+  prompt: string;
+  aspectRatio?: '1:1' | '16:9' | '9:16';
+  width?: number; // 1024-4096px
+  height?: number; // 1024-4096px
+  maxImages?: number; // 1-15
+  referenceImages?: string[]; // Up to 3 reference URLs
+}
 
 export interface ImageNode {
   id: string;
@@ -9,77 +36,31 @@ export interface ImageNode {
   parentId?: string;
   imagePath: string;
   imageHash: string;
-  
-  // User-defined tags (moved to top level for better accessibility)
   tags: string[];
-  
-  // Source information
   source: 'generated' | 'imported';
-  model?: string; // AI model used (nano-banana, seedream-4.0, etc.)
-  
-  // Generation parameters (for AI-generated images)
-  generationParams?: {
-    prompt: string;
-    negativePrompt?: string;
-    modelConfig: Record<string, any>; // Model-specific config
-    derivedFrom?: string; // node ID this was derived from
-  };
-  
-  // Import information (for imported images)
+  model?: string;
+  modelConfig?: NanoBananaGenerationConfig | SeedreamConfig;
+  derivedFrom?: string;
   importInfo?: {
     originalPath: string;
     originalFilename: string;
-    userDescription?: string;
-    importMethod: 'root' | 'child' | 'editing-base';
-    autoAssignedTree?: boolean; // was tree auto-assigned during import
-  };
-  
-  // User-managed metadata (simplified)
-  userMetadata: {
+  };  
+  userSettings: {
     favorite: boolean;
     rating?: number; // 1-5 star rating
     description?: string; // User description/notes
   };
-  
-  // Export tracking
-  exports?: {
-    path: string;
-    exportedAt: Date;
-    customName?: string;
-    format: string;
-  }[];
-  
-  // System metadata
-  success: boolean;
-  error?: string;
+  exportCount?: number;
+  lastExportedAt?: Date;
   createdAt: Date;
-  lastAccessed: Date;
-  
-  metadata: {
+  lastAccessed: Date;  
+  fileInfo: {
     fileSize: number;
     dimensions: { width: number; height: number };
     format: string;
     generationTime?: number; // seconds
     colorProfile?: string;
     hasAlpha: boolean;
-  };
-  
-  // AI analysis (optional)
-  aiAnalysis?: {
-    description: string;
-    detectedObjects: string[];
-    style: string;
-    confidence: number;
-    mood?: string;
-    composition?: string;
-  };
-  
-  // Tree position info
-  treePosition: {
-    depth: number;
-    childIndex: number; // position among siblings
-    hasChildren: boolean;
-    isLeaf: boolean;
   };
 }
 

@@ -3,6 +3,20 @@ import { ImageNode, TreeNode } from '@pixtree/core';
 import { formatFileSize, formatDuration, truncateText } from './config.js';
 
 /**
+ * Extract prompt from node's model configuration
+ */
+function getNodePrompt(node: ImageNode): string {
+  if (!node.modelConfig) return '';
+  
+  // Both NanoBananaGenerationConfig and SeedreamConfig use 'prompt' field
+  if ('prompt' in node.modelConfig) {
+    return node.modelConfig.prompt || '';
+  }
+  
+  return '';
+}
+
+/**
  * Display success message with optional details
  */
 export function showSuccess(messages: string[]): void {
@@ -43,15 +57,15 @@ export function formatNodeInfo(node: ImageNode): string[] {
   lines.push(`📋 ${chalk.cyan('Node:')} ${node.id}`);
   
   if (node.source === 'generated') {
-    lines.push(`🎨 ${chalk.yellow('Prompt:')} "${truncateText(node.generationParams?.prompt || '', 60)}"`);
+    lines.push(`🎨 ${chalk.yellow('Prompt:')} "${truncateText(getNodePrompt(node) || '', 60)}"`);
     lines.push(`🤖 ${chalk.blue('Model:')} ${node.model}`);
-    if (node.metadata.generationTime) {
-      lines.push(`⏱️  ${chalk.gray('Generation time:')} ${formatDuration(node.metadata.generationTime)}`);
+    if (node.fileInfo.generationTime) {
+      lines.push(`⏱️  ${chalk.gray('Generation time:')} ${formatDuration(node.fileInfo.generationTime)}`);
     }
   } else {
     lines.push(`📸 ${chalk.yellow('Imported:')} ${node.importInfo?.originalFilename}`);
-    if (node.importInfo?.userDescription) {
-      lines.push(`📝 ${chalk.gray('Description:')} ${node.importInfo.userDescription}`);
+    if (node.userSettings.description) {
+      lines.push(`📝 ${chalk.gray('Description:')} ${node.userSettings.description}`);
     }
   }
   
@@ -64,24 +78,21 @@ export function formatNodeInfo(node: ImageNode): string[] {
     lines.push(`🏷️  ${chalk.gray('Tags:')} ${coloredTags.join(', ')}`);
   }
   
-  if (node.userMetadata.rating) {
-    const stars = '⭐'.repeat(node.userMetadata.rating);
-    lines.push(`${stars} ${chalk.gray('Rating:')} ${node.userMetadata.rating}/5`);
+  if (node.userSettings.rating) {
+    const stars = '⭐'.repeat(node.userSettings.rating);
+    lines.push(`${stars} ${chalk.gray('Rating:')} ${node.userSettings.rating}/5`);
   }
   
-  if (node.userMetadata.favorite) {
+  if (node.userSettings.favorite) {
     lines.push(`❤️  ${chalk.red('Favorite')}`);
   }
   
   // File info
-  lines.push(`📁 ${chalk.gray('Size:')} ${formatFileSize(node.metadata.fileSize)}`);
-  lines.push(`📐 ${chalk.gray('Dimensions:')} ${node.metadata.dimensions.width}×${node.metadata.dimensions.height}`);
+  lines.push(`📁 ${chalk.gray('Size:')} ${formatFileSize(node.fileInfo.fileSize)}`);
+  lines.push(`📐 ${chalk.gray('Dimensions:')} ${node.fileInfo.dimensions.width}×${node.fileInfo.dimensions.height}`);
   lines.push(`📅 ${chalk.gray('Created:')} ${new Date(node.createdAt).toLocaleString()}`);
   
-  // Status
-  if (!node.success && node.error) {
-    lines.push(`❌ ${chalk.red('Error:')} ${node.error}`);
-  }
+  // Status - all nodes are successful by definition
   
   return lines;
 }
@@ -124,7 +135,7 @@ function displayTreeNode(
   // Node display text
   let nodeText = '';
   if (node.source === 'generated') {
-    nodeText = `"${truncateText(node.generationParams?.prompt || 'Unknown', 40)}"`;
+    nodeText = `"${truncateText(getNodePrompt(node) || 'Unknown', 40)}"`;
   } else {
     nodeText = node.importInfo?.originalFilename || 'Imported';
   }
@@ -133,14 +144,13 @@ function displayTreeNode(
   const nodeDetails = `(${node.id})`;
   const modelBadge = node.model ? ` [${getModelBadge(node.model)}]` : '';
   
-  // Success/failure indicator
-  const statusIcon = node.success ? '' : ' ❌';
+  // All nodes are successful by definition - no status icon needed
   
   // Current node indicator
   const currentIndicator = node.id === currentNodeId ? ' ← current' : '';
   
   // Rating stars
-  const rating = node.userMetadata.rating ? ' ' + '⭐'.repeat(node.userMetadata.rating) : '';
+  const rating = node.userSettings.rating ? ' ' + '⭐'.repeat(node.userSettings.rating) : '';
   
   // Tags preview
   const tagsPreview = node.tags.length > 0 
@@ -148,7 +158,7 @@ function displayTreeNode(
     : '';
   
   // Compose full line
-  const fullLine = `${nodePrefix}${icon}${chalk.white(nodeText)} ${chalk.gray(nodeDetails)}${chalk.blue(modelBadge)}${statusIcon}${rating}${chalk.green(tagsPreview)}${chalk.yellow(currentIndicator)}`;
+  const fullLine = `${nodePrefix}${icon}${chalk.white(nodeText)} ${chalk.gray(nodeDetails)}${chalk.blue(modelBadge)}${rating}${chalk.green(tagsPreview)}${chalk.yellow(currentIndicator)}`;
   
   console.log(fullLine);
   
@@ -212,12 +222,12 @@ export function displaySearchResults(nodes: ImageNode[], query: any): void {
     
     let text = '';
     if (node.source === 'generated') {
-      text = `"${truncateText(node.generationParams?.prompt || '', 50)}"`;
+      text = `"${truncateText(getNodePrompt(node) || '', 50)}"`;
     } else {
       text = node.importInfo?.originalFilename || 'Imported';
     }
     
-    const rating = node.userMetadata.rating ? ' ' + '⭐'.repeat(node.userMetadata.rating) : '';
+    const rating = node.userSettings.rating ? ' ' + '⭐'.repeat(node.userSettings.rating) : '';
     const tags = node.tags.length > 0 ? ` #${node.tags.join(' #')}` : '';
     
     console.log(`${prefix}${icon}${text} ${chalk.gray(`(${node.id})`)}${rating}${chalk.green(tags)}`);

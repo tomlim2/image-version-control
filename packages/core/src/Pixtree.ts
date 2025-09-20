@@ -1,9 +1,11 @@
 import { StorageManager } from './storage/index.js';
 import { ProjectManager, TreeManager } from './managers/index.js';
+import { ExportService } from './services/index.js';
 import { AIProvider, AIProviderRegistry } from './types/ai/AIProvider.js';
 import { NanoBananaProvider } from './ai/NanoBananaProvider.js';
 import {
   ImageNode,
+  NanoBananaGenerationConfig,
   ProjectConfig,
   Project,
   Tree,
@@ -27,12 +29,14 @@ export class Pixtree {
   private storage: StorageManager;
   private projectManager: ProjectManager;
   private treeManager: TreeManager;
+  private exportService: ExportService;
   private aiRegistry: AIProviderRegistry;
   
   constructor(projectPath: string) {
     this.storage = new StorageManager(projectPath);
     this.projectManager = new ProjectManager(this.storage);
     this.treeManager = new TreeManager(this.storage);
+    this.exportService = new ExportService(projectPath);
     this.aiRegistry = new AIProviderRegistry();
     
     // Register built-in providers
@@ -160,9 +164,6 @@ export class Pixtree {
       // Save image
       const { imagePath, imageHash } = await this.storage.saveImage(response.imageData, nodeId);
       
-      // Calculate tree position
-      const treePosition = await this.calculateTreePosition(targetTreeId, parentId);
-      
       // Create node with enhanced metadata
       const node: ImageNode = {
         id: nodeId,
@@ -173,27 +174,32 @@ export class Pixtree {
         imageHash,
         source: 'generated',
         model: options.model,
-        generationParams: {
+        modelConfig: {
           prompt,
-          modelConfig: response.metadata.parameters,
-          derivedFrom: currentNode?.id
-        },
+          temperature: options.temperature ?? 0.7,      // Use provided or default
+          topP: options.topP ?? 0.95,                   // Use provided or default
+          topK: options.topK,                           // Optional parameter
+          candidateCount: options.candidateCount ?? 1,  // Use provided or default
+          seed: options.seed,                           // Optional for reproducibility
+          aspectRatio: options.aspectRatio ?? "1:1",    // Use provided or default
+          batchCount: options.batchCount ?? 1,          // Use provided or default
+          referenceImages: options.referenceImages      // Optional reference images
+        } as NanoBananaGenerationConfig,
+        derivedFrom: currentNode?.id,
         tags: options.tags || [],
-        userMetadata: {
+        userSettings: {
           favorite: false,
           rating: options.rating
         },
-        success: true,
         createdAt: new Date(),
         lastAccessed: new Date(),
-        metadata: {
+        fileInfo: {
           fileSize: response.imageData.length,
           dimensions: await this.getImageDimensions(response.imageData),
           format: 'png',
           generationTime: response.metadata.generationTime,
           hasAlpha: false
-        },
-        treePosition
+        }
       };
       
       // Save node
@@ -208,44 +214,7 @@ export class Pixtree {
       return node;
       
     } catch (error) {
-      // Create failed node for debugging
-      const failedNode: ImageNode = {
-        id: nodeId,
-        projectId: project.id,
-        treeId: targetTreeId,
-        parentId,
-        imagePath: '',
-        imageHash: '',
-        source: 'generated',
-        model: options.model,
-        tags: options.tags || [],
-        generationParams: {
-          prompt,
-          modelConfig: options.modelConfig || {}
-        },
-        userMetadata: {
-          favorite: false,
-          rating: 1
-        },
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        createdAt: new Date(),
-        lastAccessed: new Date(),
-        treePosition: {
-          depth: 0,
-          childIndex: 0,
-          hasChildren: false,
-          isLeaf: true
-        },
-        metadata: {
-          fileSize: 0,
-          dimensions: { width: 0, height: 0 },
-          format: 'png',
-          hasAlpha: false
-        }
-      };
-      
-      await this.storage.saveNode(failedNode);
+      // Simply throw the error without creating a failed node
       throw error;
     }
   }
@@ -277,30 +246,8 @@ export class Pixtree {
     const parentId = options.parentId || 
       (options.importMethod === 'child' ? currentNode?.id : undefined);
     
-    // Calculate tree position
-    const treePosition = await this.calculateTreePosition(targetTreeId, parentId);
-    
-    // AI analysis for smart tagging
-    let aiAnalysis = undefined;
+    // Generate smart tags from file path and user tags
     let smartTags = options.tags || [];
-    
-    if (options.analyzeWithAI || project.settings.autoAnalysis) {
-      try {
-        const config = await this.storage.loadConfig();
-        const provider = this.getOrCreateProvider('nano-banana', config);
-        
-        if (provider.analyzeImage) {
-          aiAnalysis = await provider.analyzeImage(imageData);
-          
-          // Add smart tags based on AI analysis
-          if (project.settings.autoTagging) {
-            smartTags = [...smartTags, ...this.generateSmartTags(aiAnalysis, imagePath)];
-          }
-        }
-      } catch (error) {
-        console.warn('AI analysis failed:', error);
-      }
-    }
     
     // Create enhanced node with Project/Tree context
     const node: ImageNode = {
@@ -313,27 +260,21 @@ export class Pixtree {
       source: 'imported',
       importInfo: {
         originalPath: imagePath,
-        originalFilename: path.basename(imagePath),
-        userDescription: options.description,
-        importMethod: options.importMethod,
-        autoAssignedTree: !options.treeId // Track if tree was auto-assigned
+        originalFilename: path.basename(imagePath)
       },
       tags: [...new Set(smartTags)], // Remove duplicates
-      userMetadata: {
+      userSettings: {
         favorite: false,
         description: options.purpose || this.inferPurposeFromPath(imagePath)
       },
-      success: true,
       createdAt: new Date(),
       lastAccessed: new Date(),
-      metadata: {
+      fileInfo: {
         fileSize: imageData.length,
         dimensions: await this.getImageDimensions(imageData),
         format: path.extname(imagePath).substring(1) || 'png',
         hasAlpha: await this.detectAlphaChannel(imageData)
-      },
-      aiAnalysis,
-      treePosition
+      }
     };
     
     await this.storage.saveNode(node);
@@ -401,8 +342,8 @@ export class Pixtree {
       this.storage.loadNode(nodeId2)
     ]);
     
-    const prompt1 = node1.generationParams?.prompt || '';
-    const prompt2 = node2.generationParams?.prompt || '';
+    const prompt1 = this.getNodePrompt(node1);
+    const prompt2 = this.getNodePrompt(node2);
     
     if (!prompt1 || !prompt2) {
       throw new Error('Both nodes must have generation prompts to blend');
@@ -471,9 +412,9 @@ export class Pixtree {
     
     // Update user metadata
     if (updates.tags !== undefined) node.tags = updates.tags;
-    if (updates.rating !== undefined) node.userMetadata.rating = updates.rating;
-    if (updates.description !== undefined) node.userMetadata.description = updates.description;
-    if (updates.favorite !== undefined) node.userMetadata.favorite = updates.favorite;
+    if (updates.rating !== undefined) node.userSettings.rating = updates.rating;
+    if (updates.description !== undefined) node.userSettings.description = updates.description;
+    if (updates.favorite !== undefined) node.userSettings.favorite = updates.favorite;
     
     await this.storage.saveNode(node);
     return node;
@@ -513,18 +454,17 @@ export class Pixtree {
     // Copy image
     await fs.copy(fullImagePath, exportPath);
     
-    // Update node's export tracking
-    const exportInfo = {
-      path: exportPath,
-      exportedAt: new Date(),
+    // Record export in ExportService
+    const format = path.extname(exportPath).slice(1) || 'png';
+    await this.exportService.recordExport(nodeId, exportPath, {
       customName,
-      format: 'png'
-    };
+      format
+    });
     
-    if (!node.exports) {
-      node.exports = [];
-    }
-    node.exports.push(exportInfo);
+    // Update node's simple export tracking
+    const exportStats = await this.exportService.getExportStats(nodeId);
+    node.exportCount = exportStats.count;
+    node.lastExportedAt = exportStats.lastExportedAt;
     
     await this.storage.saveNode(node);
   }
@@ -604,11 +544,13 @@ export class Pixtree {
     let similarity = 0;
     
     // Prompt similarity (if both are generated)
-    if (node1.generationParams?.prompt && node2.generationParams?.prompt) {
-      const prompt1 = node1.generationParams.prompt.toLowerCase();
-      const prompt2 = node2.generationParams.prompt.toLowerCase();
-      const commonWords = prompt1.split(' ').filter(word => prompt2.includes(word));
-      similarity += (commonWords.length / Math.max(prompt1.split(' ').length, prompt2.split(' ').length)) * 0.5;
+    const prompt1 = this.getNodePrompt(node1);
+    const prompt2 = this.getNodePrompt(node2);
+    if (prompt1 && prompt2) {
+      const prompt1Lower = prompt1.toLowerCase();
+      const prompt2Lower = prompt2.toLowerCase();
+      const commonWords = prompt1Lower.split(' ').filter(word => prompt2Lower.includes(word));
+      similarity += (commonWords.length / Math.max(prompt1Lower.split(' ').length, prompt2Lower.split(' ').length)) * 0.5;
     }
     
     // Tag similarity
@@ -626,8 +568,8 @@ export class Pixtree {
   }
   
   private comparePrompts(node1: ImageNode, node2: ImageNode): string | undefined {
-    const prompt1 = node1.generationParams?.prompt;
-    const prompt2 = node2.generationParams?.prompt;
+    const prompt1 = this.getNodePrompt(node1);
+    const prompt2 = this.getNodePrompt(node2);
     
     if (!prompt1 || !prompt2) return undefined;
     
@@ -637,19 +579,34 @@ export class Pixtree {
   }
   
   private compareConfigs(node1: ImageNode, node2: ImageNode): Record<string, any> | undefined {
-    const config1 = node1.generationParams?.modelConfig;
-    const config2 = node2.generationParams?.modelConfig;
+    const config1 = node1.modelConfig;
+    const config2 = node2.modelConfig;
     
     if (!config1 || !config2) return undefined;
     
     const diff: Record<string, any> = {};
-    const allKeys = new Set([...Object.keys(config1), ...Object.keys(config2)]);
     
-    allKeys.forEach(key => {
-      if (config1[key] !== config2[key]) {
-        diff[key] = { prompt1: config1[key], prompt2: config2[key] };
+    // Type-safe comparison for specific config types
+    if ('prompt' in config1 && 'prompt' in config2) {
+      // Compare prompt (common to both NanoBananaGenerationConfig and SeedreamConfig)
+      if (config1.prompt !== config2.prompt) {
+        diff.prompt = { config1: config1.prompt, config2: config2.prompt };
       }
-    });
+      
+      // Check if both are SeedreamConfig by checking for aspectRatio
+      if ('aspectRatio' in config1 && 'aspectRatio' in config2) {
+        if (config1.aspectRatio !== config2.aspectRatio) {
+          diff.aspectRatio = { config1: config1.aspectRatio, config2: config2.aspectRatio };
+        }
+      }
+      
+      // Check if both are NanoBananaGenerationConfig by checking for mimeType
+      if ('mimeType' in config1 && 'mimeType' in config2) {
+        if (config1.mimeType !== config2.mimeType) {
+          diff.mimeType = { config1: config1.mimeType, config2: config2.mimeType };
+        }
+      }
+    }
     
     return Object.keys(diff).length > 0 ? diff : undefined;
   }
@@ -662,39 +619,6 @@ export class Pixtree {
 
   // ===== PROJECT/TREE MANAGEMENT METHODS =====
 
-  /**
-   * Calculate tree position for a new node
-   */
-  private async calculateTreePosition(treeId: string, parentId?: string): Promise<{
-    depth: number;
-    childIndex: number;
-    hasChildren: boolean;
-    isLeaf: boolean;
-  }> {
-    const allNodes = await this.storage.loadAllNodes();
-    const treeNodes = allNodes.filter(node => node.treeId === treeId);
-    
-    let depth = 0;
-    let childIndex = 0;
-    
-    if (parentId) {
-      const parent = treeNodes.find(node => node.id === parentId);
-      if (parent && parent.treePosition) {
-        depth = parent.treePosition.depth + 1;
-      }
-      
-      // Calculate child index among siblings
-      const siblings = treeNodes.filter(node => node.parentId === parentId);
-      childIndex = siblings.length; // Will be the next index
-    }
-    
-    return {
-      depth,
-      childIndex,
-      hasChildren: false, // Initially false, will be updated as children are added
-      isLeaf: true // Initially true, will be updated when children are added
-    };
-  }
 
   /**
    * Get project (single project per workspace)
@@ -1079,27 +1003,10 @@ export class Pixtree {
   }
 
   /**
-   * Generate smart tags based on AI analysis and file path
+   * Generate smart tags based on file path
    */
-  private generateSmartTags(aiAnalysis: any, imagePath: string): string[] {
+  private generateSmartTags(imagePath: string): string[] {
     const tags: string[] = [];
-    
-    if (aiAnalysis) {
-      // Add detected objects as tags (limit to avoid clutter)
-      if (aiAnalysis.detectedObjects) {
-        tags.push(...aiAnalysis.detectedObjects.slice(0, 5));
-      }
-      
-      // Add style information
-      if (aiAnalysis.style) {
-        tags.push(aiAnalysis.style.toLowerCase().replace(/\s+/g, '-'));
-      }
-      
-      // Add mood if available
-      if (aiAnalysis.mood) {
-        tags.push(aiAnalysis.mood.toLowerCase().replace(/\s+/g, '-'));
-      }
-    }
     
     // Add file type tag
     const ext = path.extname(imagePath).substring(1).toLowerCase();
@@ -1158,5 +1065,26 @@ export class Pixtree {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Extract prompt from node's model configuration
+   */
+  private getNodePrompt(node: ImageNode): string {
+    if (!node.modelConfig) return '';
+    
+    // Both NanoBananaGenerationConfig and SeedreamConfig use 'prompt' field
+    if ('prompt' in node.modelConfig) {
+      return node.modelConfig.prompt || '';
+    }
+    
+    return '';
+  }
+
+  /**
+   * Get the ExportService instance
+   */
+  getExportService(): ExportService {
+    return this.exportService;
   }
 }

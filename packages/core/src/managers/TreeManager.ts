@@ -138,8 +138,18 @@ export class TreeManager {
       return tree;
     }
 
-    // Calculate tree structure metrics
-    const depths = treeNodes.map(node => node.treePosition?.depth || 0);
+    // Calculate tree structure metrics dynamically
+    const calculateDepth = (nodeId: string, visited = new Set()): number => {
+      if (visited.has(nodeId)) return 0; // Avoid infinite loops
+      visited.add(nodeId);
+      
+      const node = treeNodes.find(n => n.id === nodeId);
+      if (!node || !node.parentId) return 0;
+      
+      return 1 + calculateDepth(node.parentId, visited);
+    };
+    
+    const depths = treeNodes.map(node => calculateDepth(node.id));
     const maxDepth = Math.max(...depths, 0);
     
     const rootNodes = treeNodes.filter(node => !node.parentId);
@@ -147,18 +157,18 @@ export class TreeManager {
       !treeNodes.some(child => child.parentId === node.id)
     );
 
-    const totalSize = treeNodes.reduce((sum, node) => sum + node.metadata.fileSize, 0);
+    const totalSize = treeNodes.reduce((sum, node) => sum + node.fileInfo.fileSize, 0);
     
     // Calculate average rating
-    const ratedNodes = treeNodes.filter(node => node.userMetadata.rating);
+    const ratedNodes = treeNodes.filter(node => node.userSettings.rating);
     const avgRating = ratedNodes.length > 0 
-      ? ratedNodes.reduce((sum, node) => sum + (node.userMetadata.rating || 0), 0) / ratedNodes.length
+      ? ratedNodes.reduce((sum, node) => sum + (node.userSettings.rating || 0), 0) / ratedNodes.length
       : 0;
 
     // Get most used prompts
     const prompts = treeNodes
-      .filter(node => node.generationParams?.prompt)
-      .map(node => node.generationParams!.prompt);
+      .filter(node => this.getNodePrompt(node))
+      .map(node => this.getNodePrompt(node));
     
     const promptCounts: Record<string, number> = {};
     prompts.forEach(prompt => {
@@ -450,5 +460,19 @@ export class TreeManager {
     }
 
     return false;
+  }
+
+  /**
+   * Extract prompt from node's model configuration
+   */
+  private getNodePrompt(node: ImageNode): string {
+    if (!node.modelConfig) return '';
+    
+    // Both NanoBananaGenerationConfig and SeedreamConfig use 'prompt' field
+    if ('prompt' in node.modelConfig) {
+      return node.modelConfig.prompt || '';
+    }
+    
+    return '';
   }
 }

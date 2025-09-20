@@ -1,9 +1,23 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
 import path from 'path';
-import { Pixtree } from '@pixtree/core';
+import { Pixtree, ImageNode } from '@pixtree/core';
 import { getProjectPath } from '../utils/config.js';
 import { showSuccess, showError } from '../utils/output.js';
+
+/**
+ * Extract prompt from node's model configuration
+ */
+function getNodePrompt(node: ImageNode): string {
+  if (!node.modelConfig) return '';
+  
+  // Both NanoBananaGenerationConfig and SeedreamConfig use 'prompt' field
+  if ('prompt' in node.modelConfig) {
+    return node.modelConfig.prompt || '';
+  }
+  
+  return '';
+}
 
 export const exportCommand = new Command('export')
   .description('Export node image to specified location')
@@ -13,12 +27,43 @@ export const exportCommand = new Command('export')
   .option('-f, --format <format>', 'output format (png, jpg, webp)', 'png')
   .option('--quality <quality>', 'image quality for jpg/webp (1-100)', '90')
   .option('--overwrite', 'overwrite existing files')
+  .option('--history', 'show export history for this node instead of exporting')
   .action(async (nodeId, outputPath, options) => {
     try {
       const projectPath = getProjectPath(options);
       const pixtree = new Pixtree(projectPath);
       
-      // Get node info
+      // Show export history if requested
+      if (options.history) {
+        const exportService = pixtree.getExportService();
+        const history = await exportService.getExportHistory(nodeId);
+        
+        console.log(chalk.cyan(`📤 Export History for ${nodeId}`));
+        console.log('');
+        
+        if (history.length === 0) {
+          console.log(chalk.gray('No exports found for this node'));
+          console.log(chalk.yellow('💡 Use'), chalk.cyan(`pixtree export ${nodeId} [path]`), chalk.yellow('to export this image'));
+          return;
+        }
+        
+        history.forEach((record, index) => {
+          const prefix = index === history.length - 1 ? '└── ' : '├── ';
+          const time = new Date(record.exportedAt).toLocaleString();
+          const customName = record.customName ? ` (${record.customName})` : '';
+          
+          console.log(`${prefix}📁 ${record.path}${customName}`);
+          console.log(`    📅 ${chalk.gray('Exported:')} ${time}`);
+          console.log(`    📊 ${chalk.gray('Format:')} ${record.format.toUpperCase()}`);
+          if (index < history.length - 1) console.log('');
+        });
+        
+        console.log('');
+        console.log(chalk.yellow('💡 Use'), chalk.cyan(`pixtree export ${nodeId} [path]`), chalk.yellow('to export again'));
+        return;
+      }
+      
+      // Get node info for regular export
       const nodes = await pixtree.search({ text: nodeId });
       if (nodes.length === 0) {
         throw new Error(`Node not found: ${nodeId}`);
@@ -61,20 +106,26 @@ export const exportCommand = new Command('export')
       console.log(chalk.green('✅ Image exported successfully!'));
       console.log('');
       
+      // Get updated export stats
+      const exportService = pixtree.getExportService();
+      const exportStats = await exportService.getExportStats(nodeId);
+      
       // Show export info
       showSuccess([
         `📁 ${chalk.gray('Exported to:')} ${finalOutputPath}`,
         `🖼️  ${chalk.gray('Source:')} ${node.source === 'generated' ? 'Generated' : 'Imported'}`,
         node.source === 'generated' 
-          ? `🎨 ${chalk.gray('Prompt:')} "${node.generationParams?.prompt}"`
+          ? `🎨 ${chalk.gray('Prompt:')} "${getNodePrompt(node)}"`
           : `📸 ${chalk.gray('Original:')} ${node.importInfo?.originalFilename}`,
         `📊 ${chalk.gray('Format:')} ${options.format.toUpperCase()}`,
-        `📐 ${chalk.gray('Dimensions:')} ${node.metadata.dimensions.width}×${node.metadata.dimensions.height}`
+        `📐 ${chalk.gray('Dimensions:')} ${node.fileInfo.dimensions.width}×${node.fileInfo.dimensions.height}`,
+        `📈 ${chalk.gray('Total exports:')} ${exportStats.count} ${exportStats.count > 1 ? `(formats: ${exportStats.formats.join(', ')})` : ''}`
       ]);
       
       console.log('');
       console.log(chalk.yellow('💡 Next steps:'));
       console.log(`   ${chalk.cyan('open "' + finalOutputPath + '"')}     # View exported image`);
+      console.log(`   ${chalk.cyan(`pixtree export ${nodeId} --history`)}  # View export history`);
       console.log(`   ${chalk.cyan('pixtree tree')}                        # Back to project tree`);
       
     } catch (error) {
@@ -97,9 +148,9 @@ export const exportCommand = new Command('export')
  * Generate a sensible filename from node data
  */
 function generateFilename(node: any): string {
-  if (node.source === 'generated' && node.generationParams?.prompt) {
+  if (node.source === 'generated' && getNodePrompt(node)) {
     // Use first few words of prompt
-    const promptWords = node.generationParams.prompt
+    const promptWords = getNodePrompt(node)
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, '')
       .split(' ')
