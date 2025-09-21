@@ -48,23 +48,24 @@ export class NanoBananaProvider extends AIProvider {
     const startTime = Date.now();
     
     try {
-      // Prepare generation config
-      const generationConfig = {
+      // Prepare generation config (only valid Gemini fields)
+      const generationConfig: any = {
         temperature: this.config.temperature || 1.0,
-        topP: this.config.topP,
-        topK: this.config.topK,
         maxOutputTokens: this.config.maxOutputTokens || 1290,
-        candidateCount: this.config.candidateCount || 1,
-        ...request.config
+        candidateCount: this.config.candidateCount || 1
       };
       
-      // Prepare content array
-      const contents: any[] = [request.prompt];
+      // Add optional fields only if they exist
+      if (this.config.topP !== undefined) generationConfig.topP = this.config.topP;
+      if (this.config.topK !== undefined) generationConfig.topK = this.config.topK;
+      
+      // Prepare content array with proper text parts
+      const parts: any[] = [{ text: request.prompt }];
       
       // Add input images if provided (for image-to-image)
       if (request.inputImages && request.inputImages.length > 0) {
         for (const imageBuffer of request.inputImages) {
-          contents.push({
+          parts.push({
             inlineData: {
               mimeType: 'image/png',
               data: imageBuffer.toString('base64')
@@ -73,14 +74,14 @@ export class NanoBananaProvider extends AIProvider {
         }
       }
       
-      // Add negative prompt if provided
+      // Add negative prompt if provided (append to text part)
       if (request.negativePrompt) {
-        contents.push(`Negative prompt: ${request.negativePrompt}`);
+        parts[0].text += `\n\nNegative prompt: ${request.negativePrompt}`;
       }
       
       // Generate content
       const result = await this.model.generateContent({
-        contents: [{ parts: contents }],
+        contents: [{ parts }],
         generationConfig
       });
       
@@ -200,14 +201,28 @@ export class NanoBananaProvider extends AIProvider {
   }
   
   private async extractImageFromResponse(response: any): Promise<Buffer> {
-    // This is a placeholder implementation
-    // The actual implementation would depend on Gemini's response format
-    // For now, we'll create a mock image buffer
+    // Extract image data from Gemini API response based on official documentation
+    // Images are returned in response.candidates[0].content.parts with inline_data
     
-    // In reality, you'd extract the base64 image data from the response
-    // and convert it to a Buffer
+    if (!response.candidates || response.candidates.length === 0) {
+      throw new Error('No candidates in response');
+    }
     
-    throw new Error('Image extraction not implemented - needs actual Gemini API response format');
+    const candidate = response.candidates[0];
+    if (!candidate.content || !candidate.content.parts) {
+      throw new Error('No content parts in response');
+    }
+    
+    // Find the first part with inlineData (image)
+    const imagePart = candidate.content.parts.find((part: any) => part.inlineData);
+    
+    if (!imagePart || !imagePart.inlineData || !imagePart.inlineData.data) {
+      throw new Error('No image data found in response');
+    }
+    
+    // Convert base64 data to Buffer
+    const base64Data = imagePart.inlineData.data;
+    return Buffer.from(base64Data, 'base64');
   }
   
   private calculateCost(tokens: number): number {

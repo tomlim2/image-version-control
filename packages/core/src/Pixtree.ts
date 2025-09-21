@@ -51,20 +51,79 @@ export class Pixtree {
     // Create project structure first
     await this.storage.createProjectStructure();
     
-    // Create the project using ProjectManager
+    // Create the project using ProjectManager (without initial tree)
     const project = await this.projectManager.createProject({
       name: options.name,
-      description: options.description,
-      initialTree: options.initialTree || {
-        name: 'Main',
-        description: 'Default tree for new images',
-        tags: ['creative']
-      }
+      description: options.description
+      // No initial tree - users will create trees explicitly
     });
     
     return project;
   }
 
+  /**
+   * Create a new tree
+   */
+  async createTree(options: Omit<TreeCreationOptions, 'projectId'>): Promise<Tree> {
+    const project = await this.projectManager.getProject();
+    
+    return await this.treeManager.createTree({
+      ...options,
+      projectId: project.id
+    });
+  }
+
+  /**
+   * Switch to a tree (by name or ID)
+   */
+  async switchToTree(nameOrId: string): Promise<Tree> {
+    const trees = await this.getTrees();
+    
+    // Try to find by name first, then by ID
+    let tree = trees.find(t => t.name === nameOrId);
+    if (!tree) {
+      tree = trees.find(t => t.id === nameOrId);
+    }
+    
+    if (!tree) {
+      throw new Error(`Tree not found: ${nameOrId}`);
+    }
+    
+    // Update workspace context
+    const context = await this.storage.loadContext();
+    context.currentTree = tree;
+    context.currentNode = undefined; // Clear current node when switching trees
+    await this.storage.saveContext(context);
+    
+    return tree;
+  }
+
+  /**
+   * Delete a tree
+   */
+  async deleteTree(nameOrId: string): Promise<void> {
+    const trees = await this.getTrees();
+    
+    // Try to find by name first, then by ID
+    let tree = trees.find(t => t.name === nameOrId);
+    if (!tree) {
+      tree = trees.find(t => t.id === nameOrId);
+    }
+    
+    if (!tree) {
+      throw new Error(`Tree not found: ${nameOrId}`);
+    }
+    
+    // Clear current tree if it's being deleted
+    const context = await this.storage.loadContext();
+    if (context.currentTree && context.currentTree.id === tree.id) {
+      context.currentTree = undefined;
+      context.currentNode = undefined;
+      await this.storage.saveContext(context);
+    }
+    
+    await this.treeManager.deleteTree(tree.id);
+  }
   
   /**
    * Generate a new image with Project/Tree context
@@ -75,46 +134,41 @@ export class Pixtree {
       this.projectManager.getProject()
     ]);
     
-    // Determine target tree
-    let targetTreeId: string = options.treeId || '';
-    if (!targetTreeId) {
-      if (context.currentTree) {
-        targetTreeId = context.currentTree.id;
-      } else if (options.autoCreateTree) {
-        // Create a new tree
-        const newTree = await this.treeManager.createTree({
-          name: 'Generated Images',
-          description: 'Auto-created tree for image generation',
-          tags: ['creative'],
-          projectId: project.id
-        });
-        targetTreeId = newTree.id;
-      } else {
-        // Use first available tree as fallback
-        const trees = await this.getTrees();
-        if (trees.length > 0) {
-          targetTreeId = trees[0].id;
-        } else {
-          throw new Error('No target tree specified. Use --tree option or create a tree first.');
-        }
-      }
+    // Require current tree context
+    if (!context.currentTree) {
+      throw new Error('No tree selected. Use "pixtree tree create <name>" and "pixtree tree switch <name>" first.');
     }
     
+    const targetTreeId = context.currentTree.id;
+    
     // Get or create AI provider
-    const provider = this.getOrCreateProvider(options.model);
+    const provider = await this.getOrCreateProvider(options.model);
     
     // Get current node for parent relationship
     const currentNode = await this.storage.getCurrentNode();
     const parentId = options.parentId || currentNode?.id;
     
+    // Auto-include current image as reference if current node exists
+    let enhancedModelConfig = { ...options.modelConfig };
+    if (currentNode) {
+      // Get current image path
+      const currentImagePath = path.join(this.storage.getProjectPath(), currentNode.imagePath);
+      
+      // Add current image to reference images (if not already specified)
+      const existingRefs = enhancedModelConfig.referenceImages || options.referenceImages || [];
+      if (!existingRefs.includes(currentImagePath)) {
+        enhancedModelConfig.referenceImages = [currentImagePath, ...existingRefs];
+      }
+    }
+    
     // Create node ID first
     const nodeId = this.storage.generateNodeId();
     
     try {
-      // Generate image
+      // Generate image with current image context
       const response = await provider.generateImage({
         prompt,
-        config: options.modelConfig
+        config: enhancedModelConfig
       });
       
       // Save image
@@ -138,7 +192,7 @@ export class Pixtree {
           seed: options.seed,                           // Optional for reproducibility
           aspectRatio: options.aspectRatio ?? "1:1",    // Use provided or default
           batchCount: options.batchCount ?? 1,          // Use provided or default
-          referenceImages: options.referenceImages      // Optional reference images
+          referenceImages: enhancedModelConfig.referenceImages  // Includes current image + user references
         } as NanoBananaGenerationConfig,
         tags: options.tags || [],
         userSettings: {
@@ -187,8 +241,19 @@ export class Pixtree {
       this.storage.loadContext()
     ]);
     
-    // Smart tree assignment logic
-    const targetTreeId = await this.determineImportTree(imagePath, options, project, context);
+    // Require current tree context
+    if (!context.currentTree) {
+      throw new Error('No tree selected. Use "pixtree tree create <name>" and "pixtree tree switch <name>" first.');
+    }
+    
+    const targetTreeId = context.currentTree.id;
+    
+    // Check if tree already has nodes (prevent mixing imports with existing content)
+    const allNodes = await this.storage.loadAllNodes();
+    const existingNodes = allNodes.filter(node => node.treeId === targetTreeId);
+    if (existingNodes.length > 0) {
+      throw new Error(`Tree "${context.currentTree.name}" already contains ${existingNodes.length} image(s). Create a new tree for imports to keep content organized.`);
+    }
     
     const nodeId = this.storage.generateNodeId();
     
@@ -304,7 +369,7 @@ export class Pixtree {
       throw new Error('Both nodes must have generation prompts to blend');
     }
     
-    const provider = this.getOrCreateProvider(node1.model || 'nano-banana');
+    const provider = await this.getOrCreateProvider(node1.model || 'nano-banana');
     
     if (!provider.blendPrompts) {
       // Fallback simple blending
@@ -432,21 +497,23 @@ export class Pixtree {
   
   // Private helper methods
   
-  private getOrCreateProvider(modelName: string): AIProvider {
+  private async getOrCreateProvider(modelName: string): Promise<AIProvider> {
     let provider = this.aiRegistry.getProvider(modelName);
     
     if (!provider) {
-      // Create default provider configuration
-      const defaultConfig = {
-        enabled: true,
-        apiKey: process.env.GOOGLE_AI_API_KEY || '',
-        defaultConfig: {
-          temperature: 1.0,
-          model: 'gemini-2.5-flash-image-preview'
-        }
-      };
+      // Load configuration from storage
+      const config = await this.storage.loadConfig();
+      const providerConfig = config.aiProviders[modelName];
       
-      provider = this.aiRegistry.createProvider(modelName, defaultConfig);
+      if (!providerConfig) {
+        throw new Error(`AI provider '${modelName}' is not configured`);
+      }
+      
+      if (!providerConfig.enabled) {
+        throw new Error(`AI provider '${modelName}' is disabled`);
+      }
+      
+      provider = this.aiRegistry.createProvider(modelName, providerConfig);
     }
     
     return provider;
@@ -589,16 +656,6 @@ export class Pixtree {
     return await this.projectManager.getProject();
   }
 
-  /**
-   * Create a new tree in current project
-   */
-  async createTree(options: Omit<TreeCreationOptions, 'projectId'>): Promise<Tree> {
-    const project = await this.projectManager.getProject();
-    return await this.treeManager.createTree({
-      ...options,
-      projectId: project.id
-    });
-  }
 
   /**
    * Get all trees in current project
@@ -614,14 +671,6 @@ export class Pixtree {
     return await this.treeManager.getTree(treeId);
   }
 
-  /**
-   * Switch to a different tree context
-   */
-  async switchToTree(treeId: string): Promise<Tree> {
-    const tree = await this.treeManager.getTree(treeId);
-    await this.storage.setCurrentTree(tree);
-    return tree;
-  }
 
   /**
    * Get current workspace context

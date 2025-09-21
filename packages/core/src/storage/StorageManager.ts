@@ -11,6 +11,19 @@ import {
   ProjectSearchOptions
 } from '../types/index.js';
 
+export interface ProjectConfig {
+  aiProviders: {
+    [key: string]: {
+      enabled: boolean;
+      apiKey: string;
+      defaultConfig: any;
+    };
+  };
+  preferences: {
+    defaultModel: string;
+  };
+}
+
 export class StorageManager {
   private projectPath: string;
   private pixtreePath: string;
@@ -19,6 +32,7 @@ export class StorageManager {
   private treesPath: string;
   private projectConfigPath: string;
   private contextPath: string;
+  private configPath: string;
   
   constructor(projectPath: string) {
     this.projectPath = projectPath;
@@ -28,6 +42,7 @@ export class StorageManager {
     this.treesPath = path.join(this.pixtreePath, 'trees');
     this.projectConfigPath = path.join(this.pixtreePath, 'project.json');
     this.contextPath = path.join(this.pixtreePath, 'context.json');
+    this.configPath = path.join(this.pixtreePath, 'config.json');
   }
   
   /**
@@ -48,6 +63,10 @@ export class StorageManager {
       recentTrees: []
     };
     await this.saveContext(initialContext);
+    
+    // Initialize default configuration
+    const defaultConfig = this.getDefaultConfig();
+    await this.saveConfig(defaultConfig);
   }
   
 
@@ -561,5 +580,46 @@ export class StorageManager {
     }
     
     return '';
+  }
+
+  // ===== CONFIGURATION MANAGEMENT =====
+
+  /**
+   * Load project configuration
+   */
+  async loadConfig(): Promise<ProjectConfig> {
+    if (!(await fs.pathExists(this.configPath))) {
+      // Return default config if none exists
+      return this.getDefaultConfig();
+    }
+    return await fs.readJSON(this.configPath);
+  }
+
+  /**
+   * Save project configuration
+   */
+  async saveConfig(config: ProjectConfig): Promise<void> {
+    await fs.writeJSON(this.configPath, config, { spaces: 2 });
+  }
+
+  /**
+   * Get default configuration
+   */
+  private getDefaultConfig(): ProjectConfig {
+    return {
+      aiProviders: {
+        'nano-banana': {
+          enabled: true,
+          apiKey: '',
+          defaultConfig: {
+            temperature: 1.0,
+            model: 'gemini-2.5-flash-image-preview'
+          }
+        }
+      },
+      preferences: {
+        defaultModel: 'nano-banana'
+      }
+    };
   }
 }

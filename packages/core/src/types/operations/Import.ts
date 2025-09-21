@@ -11,5 +11,7 @@ export interface ImportOptions {
   tags?: string[];
   treeTags?: string[]; // tags for new tree if auto-creating
   treeName?: string; // name for new tree if auto-creating
+  treeDescription?: string; // description for new tree if auto-creating
   purpose?: string;
+  rating?: number; // initial rating for the imported image
 }

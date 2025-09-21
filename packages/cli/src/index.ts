@@ -9,6 +9,7 @@ import { dirname, join } from 'path';
 // Import commands
 import { initCommand } from './commands/init.js';
 import { generateCommand } from './commands/generate.js';
+import { importCommand } from './commands/import.js';
 import { treeCommand } from './commands/tree.js';
 import { checkoutCommand } from './commands/checkout.js';
 import { tagCommand } from './commands/tag.js';
@@ -35,6 +36,7 @@ program
 // Add commands
 program.addCommand(initCommand);
 program.addCommand(generateCommand);
+program.addCommand(importCommand);
 program.addCommand(treeCommand);
 program.addCommand(checkoutCommand);
 program.addCommand(tagCommand);
@@ -50,7 +52,9 @@ program.on('--help', () => {
   console.log(chalk.yellow('Examples:'));
   console.log('  $ pixtree init                           Initialize new project');
   console.log('  $ pixtree generate "a cute cat"         Generate image from prompt');
+  console.log('  $ pixtree import ./photo.jpg             Import image and create new tree');
   console.log('  $ pixtree tree                          Show project tree');
+  console.log('  $ pixtree checkout node-123             Switch to specific image');
   console.log('  $ pixtree tag node-123 "favorite"      Add tag to node');
   console.log('  $ pixtree export node-123               Export image');
   console.log('  $ pixtree config set apiKey <key>       Set API key');
@@ -58,7 +62,7 @@ program.on('--help', () => {
   console.log(chalk.yellow('Get started:'));
   console.log('  1. pixtree init');
   console.log('  2. Set your API key: pixtree config set apiKey <your-key>');
-  console.log('  3. pixtree generate "your first prompt"');
+  console.log('  3. pixtree generate "your first prompt" OR pixtree import ./image.jpg');
   console.log('');
   console.log(chalk.cyan('📚 Documentation: https://pixtree.dev/docs'));
   console.log(chalk.cyan('🐛 Issues: https://github.com/younsoolim/pixtree/issues'));

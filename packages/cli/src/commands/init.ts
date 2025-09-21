@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import chalk from 'chalk';
+import { basename } from 'path';
 import { Pixtree } from '@pixtree/core';
 import { getProjectPath } from '../utils/config.js';
 
@@ -14,7 +15,7 @@ export const initCommand = new Command('init')
       console.log('');
       
       // Use current directory name or default to "main"
-      const currentDirName = require('path').basename(process.cwd());
+      const currentDirName = basename(process.cwd());
       const projectName = currentDirName || 'main';
       
       // Initialize project with minimal settings
@@ -33,7 +34,9 @@ export const initCommand = new Command('init')
       
       console.log(chalk.yellow('🎯 Get started:'));
       console.log(`   ${chalk.cyan('pixtree config set apiKey <your-key>')}    # 1. Set API key first`);
-      console.log(`   ${chalk.cyan('pixtree import image.jpg')}                # 2. Import your first image`);
+      console.log(`   ${chalk.cyan('pixtree tree create "my-project"')}        # 2. Create your first tree`);
+      console.log(`   ${chalk.cyan('pixtree tree switch "my-project"')}        # 3. Switch to the tree`);
+      console.log(`   ${chalk.cyan('pixtree generate "cute cat"')}             # 4. Generate or import images`);
       console.log('');
       console.log(chalk.gray('💡 Get API key: https://ai.google.dev/'));
       
