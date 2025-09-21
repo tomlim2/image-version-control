@@ -33,9 +33,10 @@ Thumbs.db
 *.swo
 *~
 
-# Testing
+# Testing and Coverage
 coverage/
 .nyc_output/
+tests/
 
 # Logs
 logs/
@@ -47,25 +48,15 @@ pids/
 *.seed
 *.pid.lock
 
-# Coverage directory used by tools like istanbul
-coverage/
-.nyc_output/
-
-# Dependency directories
-node_modules/
-jspm_packages/
-
-# Optional npm cache directory
+# Cache directories
 .npm
-
-# Optional eslint cache
 .eslintcache
-
-# Microbundle cache
 .rpt2_cache/
 .rts2_cache_cjs/
 .rts2_cache_es/
 .rts2_cache_umd/
+.cache
+.parcel-cache
 
 # Optional REPL history
 .node_repl_history
@@ -76,23 +67,15 @@ jspm_packages/
 # Yarn Integrity file
 .yarn-integrity
 
-# parcel-bundler cache (https://parceljs.org/)
-.cache
-.parcel-cache
-
-# next.js build output
+# Framework build outputs
 .next
-
-# nuxt.js build output
 .nuxt
-
-# vuepress build output
 .vuepress/dist
 
 # Serverless directories
 .serverless/
 
-# DynamoDB Local files
+# Database files
 .dynamodb/
 
 # TernJS port file
@@ -101,9 +84,21 @@ jspm_packages/
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
 
+# Pixtree test directories and files
+test-*/
+test-images/
+test-pixtree*/
+test-import*/
+*TEST*.md
+TESTING_INSTRUCTIONS.md
+USER_JOURNEY_TESTING.md
+SIMPLE_TESTING.md
+TEST_GUIDE.md
+
 # Example projects and test data
 examples/*/node_modules/
 examples/*/.pixtree/
 test-projects/
 
+# Development documentation
 CLAUDE.md
