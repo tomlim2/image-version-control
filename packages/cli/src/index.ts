@@ -14,7 +14,6 @@ import { treeCommand } from './commands/tree.js';
 import { checkoutCommand } from './commands/checkout.js';
 import { nodeCommand } from './commands/node.js';
 import { statusCommand } from './commands/status.js';
-import { tagCommand } from './commands/tag.js';
 import { exportCommand } from './commands/export.js';
 import { configCommand } from './commands/config.js';
 
@@ -43,7 +42,6 @@ program.addCommand(treeCommand);
 program.addCommand(checkoutCommand);
 program.addCommand(nodeCommand);
 program.addCommand(statusCommand);
-program.addCommand(tagCommand);  // Keep for backward compatibility
 program.addCommand(exportCommand);
 program.addCommand(configCommand);
 

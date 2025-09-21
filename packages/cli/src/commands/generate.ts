@@ -219,7 +219,7 @@ export const generateCommand = new Command('generate')
         console.log('');
         console.log(chalk.yellow('💡 Next steps:'));
         console.log(`   ${chalk.cyan('pixtree tree')}                    # View project tree`);
-        console.log(`   ${chalk.cyan('pixtree tag ' + node.id + ' <tag>')}    # Add tags`);
+        console.log(`   ${chalk.cyan('pixtree node ' + node.id + ' tag add <tag>')}  # Add tags`);
         console.log(`   ${chalk.cyan('pixtree export ' + node.id)}       # Export image`);
         console.log('');
         console.log(chalk.yellow('🎨 Generate more with model-specific options:'));

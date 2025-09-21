@@ -168,14 +168,14 @@ export class ProjectManager {
       // No favorites yet but has images
       const favoriteCount = allNodes.filter(node => node.userSettings.favorite).length;
       if (allNodes.length > 0 && favoriteCount === 0) {
-        suggestions.push('Mark your best images as favorites with: pixtree tag <node-id> --favorite');
+        suggestions.push('Mark your best images as favorites with: pixtree node <node-id> favorite');
       }
 
       // Low rating usage
       const ratedImages = allNodes.filter(node => node.userSettings.rating && node.userSettings.rating > 0).length;
       
       if (allNodes.length > 5 && ratedImages / allNodes.length < 0.3) {
-        suggestions.push('Consider rating your images to track quality: pixtree tag <node-id> --rating 1-5');
+        suggestions.push('Consider rating your images to track quality: pixtree node <node-id> rating <1-5>');
       }
 
       // Multiple unorganized trees

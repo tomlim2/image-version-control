@@ -139,7 +139,7 @@ export const importCommand = new Command('import')
         console.log(chalk.yellow('📋 Next steps:'));
         console.log(`   ${chalk.cyan('pixtree tree')}                           # View project tree structure`);
         console.log(`   ${chalk.cyan(`pixtree checkout ${importedNode.id}`)}    # Checkout to this image`);
-        console.log(`   ${chalk.cyan(`pixtree tag ${importedNode.id} <tag>`)}       # Add more tags`);
+        console.log(`   ${chalk.cyan(`pixtree node ${importedNode.id} tag add <tag>`)}  # Add more tags`);
         console.log(`   ${chalk.cyan('pixtree generate "variation"')}           # Generate variation from this image`);
         console.log(`   ${chalk.cyan(`pixtree export ${importedNode.id}`)}          # Export image`);
         
