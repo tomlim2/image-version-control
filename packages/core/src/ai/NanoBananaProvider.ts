@@ -48,6 +48,12 @@ export class NanoBananaProvider extends AIProvider {
     const startTime = Date.now();
     
     try {
+      // Extract parameters from request config
+      const aspectRatio = request.config?.aspectRatio || '1:1';
+      const resolution = request.config?.resolution;
+      const width = request.config?.width;
+      const height = request.config?.height;
+      
       // Prepare generation config (only valid Gemini fields)
       const generationConfig: any = {
         temperature: this.config.temperature || 1.0,
@@ -59,8 +65,53 @@ export class NanoBananaProvider extends AIProvider {
       if (this.config.topP !== undefined) generationConfig.topP = this.config.topP;
       if (this.config.topK !== undefined) generationConfig.topK = this.config.topK;
       
-      // Prepare content array with proper text parts
-      const parts: any[] = [{ text: request.prompt }];
+      // Note: Gemini API doesn't support aspectRatio in generation_config
+      // We rely entirely on prompt-based aspect ratio instructions
+      
+      // Enhance prompt with aspect ratio and resolution instructions
+      let enhancedPrompt = request.prompt;
+      
+      // Add aspect ratio instruction
+      if (aspectRatio !== '1:1') {
+        // Map aspect ratios to descriptive terms for better results
+        const aspectRatioDescriptions: Record<string, string> = {
+          '16:9': 'landscape/widescreen format',
+          '9:16': 'portrait/vertical format', 
+          '4:3': 'standard fullscreen format',
+          '3:4': 'portrait fullscreen format'
+        };
+        
+        const description = aspectRatioDescriptions[aspectRatio] || `${aspectRatio} aspect ratio format`;
+        enhancedPrompt += `\n\nGenerate this image in ${description} (${aspectRatio}).`;
+      }
+      
+      // Add resolution hints to prompt
+      if (resolution || width || height) {
+        let resolutionHint = '\n\n';
+        
+        if (resolution) {
+          const resolutionDescriptions: Record<string, string> = {
+            '2K': 'high resolution, sharp and detailed',
+            '1K': 'standard resolution, good quality',
+            'high': 'high quality with fine details',
+            'medium': 'balanced quality and processing',
+            'low': 'quick generation, lower detail'
+          };
+          resolutionHint += `Generate with ${resolutionDescriptions[resolution] || resolution} quality. `;
+        }
+        
+        if (width || height) {
+          const targetWidth = width || 'auto';
+          const targetHeight = height || 'auto';
+          resolutionHint += `Target dimensions approximately ${targetWidth}x${targetHeight} pixels. `;
+        }
+        
+        resolutionHint += 'Focus on crisp, clear details and sharp image quality.';
+        enhancedPrompt += resolutionHint;
+      }
+      
+      // Prepare content array with enhanced prompt
+      const parts: any[] = [{ text: enhancedPrompt }];
       
       // Add input images if provided (for image-to-image)
       if (request.inputImages && request.inputImages.length > 0) {
@@ -100,7 +151,12 @@ export class NanoBananaProvider extends AIProvider {
           model: this.name,
           parameters: {
             prompt: request.prompt,
+            enhancedPrompt: enhancedPrompt,
             negativePrompt: request.negativePrompt,
+            aspectRatio: aspectRatio,
+            resolution: resolution,
+            width: width,
+            height: height,
             ...generationConfig
           },
           generationTime,

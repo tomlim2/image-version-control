@@ -3,6 +3,7 @@ import { ProjectManager, TreeManager } from './managers/index.js';
 import { ExportService } from './services/index.js';
 import { AIProvider, AIProviderRegistry } from './types/ai/AIProvider.js';
 import { NanoBananaProvider } from './ai/NanoBananaProvider.js';
+import sharp from 'sharp';
 import {
   ImageNode,
   NanoBananaGenerationConfig,
@@ -38,6 +39,62 @@ export class Pixtree {
     
     // Register built-in providers
     this.aiRegistry.register('nano-banana', NanoBananaProvider);
+  }
+  
+  /**
+   * Extract image dimensions and calculate aspect ratio from image buffer or file path
+   */
+  private async getImageInfo(imagePath: string): Promise<{
+    width: number;
+    height: number;
+    aspectRatio: string;
+    resolution: string;
+  }> {
+    try {
+      const metadata = await sharp(imagePath).metadata();
+      const width = metadata.width || 1024;
+      const height = metadata.height || 1024;
+      
+      // Calculate closest standard aspect ratio
+      const ratio = width / height;
+      let aspectRatio = '1:1'; // default
+      
+      // Find closest standard aspect ratio
+      const standardRatios = [
+        { ratio: 1.0, label: '1:1' },
+        { ratio: 16/9, label: '16:9' },
+        { ratio: 9/16, label: '9:16' },
+        { ratio: 4/3, label: '4:3' },
+        { ratio: 3/4, label: '3:4' }
+      ];
+      
+      let minDiff = Infinity;
+      for (const standard of standardRatios) {
+        const diff = Math.abs(ratio - standard.ratio);
+        if (diff < minDiff) {
+          minDiff = diff;
+          aspectRatio = standard.label;
+        }
+      }
+      
+      // Determine resolution category
+      const pixelCount = width * height;
+      let resolution = '1K';
+      if (pixelCount > 1500000) { // > 1.5MP
+        resolution = '2K';
+      } else if (pixelCount > 800000) { // > 0.8MP
+        resolution = 'high';
+      } else if (pixelCount > 300000) { // > 0.3MP
+        resolution = 'medium';
+      } else {
+        resolution = 'low';
+      }
+      
+      return { width, height, aspectRatio, resolution };
+    } catch (error) {
+      // Fallback to defaults if image analysis fails
+      return { width: 1024, height: 1024, aspectRatio: '1:1', resolution: '1K' };
+    }
   }
   
   /**
@@ -160,6 +217,39 @@ export class Pixtree {
         // Load current image as input for image-to-image generation
         const currentImageBuffer = await fs.readFile(currentImagePath);
         inputImages = [currentImageBuffer];
+        
+        // Auto-detect aspect ratio and resolution from current image if not explicitly specified by user
+        const imageInfo = await this.getImageInfo(currentImagePath);
+        let autoDetectedValues: string[] = [];
+        
+        // Only apply auto-detected values if not explicitly provided by user
+        if (!enhancedModelConfig.aspectRatio) {
+          enhancedModelConfig.aspectRatio = imageInfo.aspectRatio;
+          autoDetectedValues.push('aspect ratio');
+        }
+        
+        if (!enhancedModelConfig.resolution) {
+          enhancedModelConfig.resolution = imageInfo.resolution;
+          autoDetectedValues.push('resolution');
+        }
+        
+        if (!enhancedModelConfig.width) {
+          enhancedModelConfig.width = imageInfo.width;
+          autoDetectedValues.push('width');
+        }
+        
+        if (!enhancedModelConfig.height) {
+          enhancedModelConfig.height = imageInfo.height;
+          autoDetectedValues.push('height');
+        }
+        
+        if (autoDetectedValues.length > 0) {
+          const finalAspectRatio = enhancedModelConfig.aspectRatio;
+          const finalResolution = enhancedModelConfig.resolution;
+          const finalWidth = enhancedModelConfig.width;
+          const finalHeight = enhancedModelConfig.height;
+          console.log(`🔍 Auto-detected from current image: ${finalAspectRatio} aspect ratio, ${finalResolution} resolution (${finalWidth}x${finalHeight})`);
+        }
       } catch (error) {
         console.warn(`Warning: Could not load current image for generation: ${error}`);
       }

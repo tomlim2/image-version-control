@@ -14,7 +14,10 @@ export const generateCommand = new Command('generate')
   .option('-t, --temperature <number>', 'creativity level (0-1 for nano-banana, 0-2 for diffusion)', '0.7')
   .option('--top-p <number>', 'nucleus sampling threshold (nano-banana only)', '0.95')
   .option('--top-k <number>', 'top-k sampling (nano-banana only)', '40')
-  .option('--aspect-ratio <ratio>', 'image aspect ratio (1:1, 16:9, 9:16)', '1:1')
+  .option('--aspect-ratio <ratio>', 'image aspect ratio (1:1, 16:9, 9:16, 4:3, 3:4)', '1:1')
+  .option('--resolution <size>', 'image resolution hint (1K, 2K, high, medium, low)', '1K')
+  .option('--width <pixels>', 'image width hint in pixels (max 1024 for nano-banana)')
+  .option('--height <pixels>', 'image height hint in pixels (max 1024 for nano-banana)')
   .option('--negative <prompt>', 'negative prompt (diffusion models only)')
   .option('--steps <number>', 'generation steps (diffusion models only)', '50')
   .option('--cfg-scale <number>', 'classifier-free guidance scale (diffusion models only)', '7.5')
@@ -93,6 +96,28 @@ export const generateCommand = new Command('generate')
           throw new Error('Nano Banana supports up to 5 reference images');
         }
         
+        // Validate resolution parameters for nano-banana
+        if (options.width) {
+          const width = parseInt(options.width);
+          if (isNaN(width) || width < 64 || width > 1024) {
+            throw new Error('Width must be between 64 and 1024 pixels for nano-banana');
+          }
+        }
+        
+        if (options.height) {
+          const height = parseInt(options.height);
+          if (isNaN(height) || height < 64 || height > 1024) {
+            throw new Error('Height must be between 64 and 1024 pixels for nano-banana');
+          }
+        }
+        
+        if (options.resolution) {
+          const validResolutions = ['1K', '2K', 'high', 'medium', 'low'];
+          if (!validResolutions.includes(options.resolution)) {
+            throw new Error(`Resolution must be one of: ${validResolutions.join(', ')}`);
+          }
+        }
+        
         // Warn about unsupported options only if user explicitly provided them
         if (process.argv.includes('--steps')) console.log(chalk.yellow('⚠️  Warning: --steps ignored for nano-banana model'));
         if (process.argv.includes('--cfg-scale')) console.log(chalk.yellow('⚠️  Warning: --cfg-scale ignored for nano-banana model'));
@@ -147,7 +172,23 @@ export const generateCommand = new Command('generate')
         dynamicModelConfig.temperature = temperature;
         dynamicModelConfig.topP = topP;
         dynamicModelConfig.topK = topK;
-        dynamicModelConfig.aspectRatio = options.aspectRatio || '1:1';
+        
+        // Only include aspect ratio if user explicitly provided it (not default)
+        if (process.argv.includes('--aspect-ratio')) {
+          dynamicModelConfig.aspectRatio = options.aspectRatio;
+        }
+        
+        // Add resolution parameters as hints for prompt enhancement - only if explicitly provided
+        if (process.argv.includes('--resolution')) {
+          dynamicModelConfig.resolution = options.resolution;
+        }
+        if (process.argv.includes('--width')) {
+          dynamicModelConfig.width = parseInt(options.width);
+        }
+        if (process.argv.includes('--height')) {
+          dynamicModelConfig.height = parseInt(options.height);
+        }
+        
         if (referenceImages.length > 0) {
           dynamicModelConfig.referenceImages = referenceImages;
         }
