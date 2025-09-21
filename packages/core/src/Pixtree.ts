@@ -148,27 +148,46 @@ export class Pixtree {
     const currentNode = await this.storage.getCurrentNode();
     const parentId = options.parentId || currentNode?.id;
     
-    // Auto-include current image as reference if current node exists
+    // Auto-include current image as input image for image-to-image generation if current node exists
     let enhancedModelConfig = { ...options.modelConfig };
+    let inputImages: Buffer[] = [];
+    
     if (currentNode) {
-      // Get current image path
+      // Get current image path and load image data
       const currentImagePath = path.join(this.storage.getProjectPath(), currentNode.imagePath);
       
-      // Add current image to reference images (if not already specified)
-      const existingRefs = enhancedModelConfig.referenceImages || options.referenceImages || [];
-      if (!existingRefs.includes(currentImagePath)) {
-        enhancedModelConfig.referenceImages = [currentImagePath, ...existingRefs];
+      try {
+        // Load current image as input for image-to-image generation
+        const currentImageBuffer = await fs.readFile(currentImagePath);
+        inputImages = [currentImageBuffer];
+      } catch (error) {
+        console.warn(`Warning: Could not load current image for generation: ${error}`);
       }
+    }
+    
+    // Load additional reference images from config
+    if (enhancedModelConfig.referenceImages && Array.isArray(enhancedModelConfig.referenceImages)) {
+      for (const refImagePath of enhancedModelConfig.referenceImages) {
+        try {
+          const refImageBuffer = await fs.readFile(refImagePath);
+          inputImages.push(refImageBuffer);
+        } catch (error) {
+          console.warn(`Warning: Could not load reference image ${refImagePath}: ${error}`);
+        }
+      }
+      // Remove referenceImages from config since we've converted them to inputImages
+      delete enhancedModelConfig.referenceImages;
     }
     
     // Create node ID first
     const nodeId = this.storage.generateNodeId();
     
     try {
-      // Generate image with current image context
+      // Generate image with current image as input for modification
       const response = await provider.generateImage({
         prompt,
-        config: enhancedModelConfig
+        config: enhancedModelConfig,
+        inputImages: inputImages.length > 0 ? inputImages : undefined
       });
       
       // Save image

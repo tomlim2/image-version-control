@@ -93,9 +93,9 @@ export const generateCommand = new Command('generate')
           throw new Error('Nano Banana supports up to 5 reference images');
         }
         
-        // Warn about unsupported options
-        if (options.steps) console.log(chalk.yellow('⚠️  Warning: --steps ignored for nano-banana model'));
-        if (options.cfgScale) console.log(chalk.yellow('⚠️  Warning: --cfg-scale ignored for nano-banana model'));
+        // Warn about unsupported options only if user explicitly provided them
+        if (process.argv.includes('--steps')) console.log(chalk.yellow('⚠️  Warning: --steps ignored for nano-banana model'));
+        if (process.argv.includes('--cfg-scale')) console.log(chalk.yellow('⚠️  Warning: --cfg-scale ignored for nano-banana model'));
         if (options.negative) console.log(chalk.yellow('⚠️  Warning: --negative ignored for nano-banana model'));
         
       } else {
@@ -115,9 +115,9 @@ export const generateCommand = new Command('generate')
           throw new Error('Seedream supports up to 3 reference images');
         }
         
-        // Warn about unsupported options
-        if (options.topP) console.log(chalk.yellow('⚠️  Warning: --top-p ignored for diffusion models'));
-        if (options.topK) console.log(chalk.yellow('⚠️  Warning: --top-k ignored for diffusion models'));
+        // Warn about unsupported options only if user explicitly provided them
+        if (process.argv.includes('--top-p')) console.log(chalk.yellow('⚠️  Warning: --top-p ignored for diffusion models'));
+        if (process.argv.includes('--top-k')) console.log(chalk.yellow('⚠️  Warning: --top-k ignored for diffusion models'));
       }
       
       // Pre-validation: Check API key and model configuration
@@ -182,13 +182,14 @@ export const generateCommand = new Command('generate')
       
       // Show current image context if exists
       if (currentContext) {
-        console.log(`🔗 ${chalk.magenta('Using current image as reference:')} ${currentContext.id}`);
+        console.log(`🖼️  ${chalk.magenta('Modifying current image:')} ${currentContext.id}`);
         console.log(`   ${chalk.dim(currentContext.imagePath)}`);
       }
       
       // Show additional reference images
       if (referenceImages.length > 0) {
-        console.log(`🖼️  ${chalk.green('Additional reference images:')} ${referenceImages.length} file(s)`);
+        const label = currentContext ? 'Additional reference images:' : 'Reference images:';
+        console.log(`📎 ${chalk.green(label)} ${referenceImages.length} file(s)`);
         referenceImages.forEach((img, idx) => {
           console.log(`   ${idx + 1}. ${chalk.dim(img)}`);
         });
